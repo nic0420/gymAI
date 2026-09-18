@@ -40,6 +40,7 @@ import { TouchKioskTerminal } from "@/components/kiosk/TouchKioskTerminal";
 import { GuidedTourModal } from "@/components/onboarding/GuidedTourModal";
 import { PublicLandingPage } from "@/components/landing/PublicLandingPage";
 import { LoginModal } from "@/components/auth/LoginModal";
+import { SaaSSubscriptionModal } from "@/components/billing/SaaSSubscriptionModal";
 import { ToastProvider, useToast } from "@/components/ui/ToastProvider";
 
 export default function HomePage() {
@@ -63,7 +64,9 @@ function HomeContent() {
   const [isKioskOpen, setIsKioskOpen] = useState(false);
   const [isTourOpen, setIsTourOpen] = useState(false);
   const [isLoginOpen, setIsLoginOpen] = useState(false);
+  const [isSubModalOpen, setIsSubModalOpen] = useState(false);
   const [selectedTour, setSelectedTour] = useState("receptionist");
+
 
   // Usuario y Tenant Activo
   const [currentUser, setCurrentUser] = useState({
@@ -124,6 +127,13 @@ function HomeContent() {
         onLoginSuccess={handleLoginSuccess}
       />
 
+      {/* SaaS Subscription & Bank Transfer Modal */}
+      <SaaSSubscriptionModal
+        isOpen={isSubModalOpen}
+        onClose={() => setIsSubModalOpen(false)}
+        gymName={currentUser.tenantName}
+      />
+
       {/* Touch Kiosk Overlay Mode */}
       {isKioskOpen && <TouchKioskTerminal onClose={() => setIsKioskOpen(false)} />}
 
@@ -173,6 +183,16 @@ function HomeContent() {
 
           {/* Quick Action Badges & Controls */}
           <div className="flex items-center gap-2.5 text-xs font-medium">
+            {/* Pagar / Renovar Licencia */}
+            <button
+              onClick={() => setIsSubModalOpen(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 transition-all text-xs font-semibold"
+              title="Ver datos de transferencia bancaria y suscripción"
+            >
+              <CreditCard className="w-3.5 h-3.5 text-emerald-400" />
+              <span className="hidden sm:inline">Pagar Suscripción</span>
+            </button>
+
             {/* Login / Cambiar Cuenta */}
             <button
               onClick={() => setIsLoginOpen(true)}
@@ -191,6 +211,7 @@ function HomeContent() {
               <Globe className="w-3.5 h-3.5 text-blue-400" />
               <span>Landing B2B</span>
             </button>
+
 
             {/* Launch Guided Tour */}
             <button

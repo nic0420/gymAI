@@ -19,6 +19,7 @@ import {
   Flame,
   HelpCircle,
 } from "lucide-react";
+import { SaaSSubscriptionModal } from "@/components/billing/SaaSSubscriptionModal";
 
 interface PublicLandingProps {
   onEnterApp: (tab?: string) => void;
@@ -34,6 +35,8 @@ export function PublicLandingPage({
   onOpenLogin,
 }: PublicLandingProps) {
   const [activeTabDemo, setActiveTabDemo] = useState<"pass" | "warn" | "deny">("pass");
+  const [isSubscriptionOpen, setIsSubscriptionOpen] = useState(false);
+
 
   return (
     <div className="min-h-screen bg-zinc-950 text-zinc-100 flex flex-col selection:bg-blue-500 selection:text-white">
@@ -454,6 +457,167 @@ export function PublicLandingPage({
         </div>
       </section>
 
+      {/* Planes y Precios Section (Precios en ARS) */}
+      <section className="py-24 max-w-7xl mx-auto px-6 w-full border-t border-zinc-900">
+        <div className="text-center max-w-3xl mx-auto mb-16">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-500/10 border border-blue-500/20 text-xs font-mono text-blue-400 mb-3">
+            PLANES & SUSCRIPCIÓN MENSUAL (ARS)
+          </div>
+          <h2 className="text-3xl sm:text-5xl font-extrabold text-white tracking-tight mb-4">
+            Precios ultra-competitivos. Menos que 1 socio al mes.
+          </h2>
+          <p className="text-zinc-400 text-base">
+            Sin contratos de permanencia. Activa tu licencia por transferencia bancaria directa o Mercado Pago.
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 items-stretch">
+          {/* Plan 1: Starter */}
+          <div className="glass-panel p-8 rounded-3xl border border-zinc-800 flex flex-col justify-between hover:border-zinc-700 transition-all">
+            <div>
+              <span className="text-xs uppercase font-mono font-bold text-zinc-400 block mb-1">
+                Gimnasios de Barrio
+              </span>
+              <h3 className="text-2xl font-bold text-white mb-2">Starter Barrial</h3>
+              <div className="my-4">
+                <span className="text-4xl font-black text-white font-mono">$19.900</span>
+                <span className="text-xs text-zinc-400 ml-1">ARS / mes</span>
+              </div>
+              <p className="text-xs text-zinc-400 mb-6">
+                Ideal para boxes y gimnasios que inician su digitalización.
+              </p>
+              <ul className="space-y-3 text-xs text-zinc-300 border-t border-zinc-800/80 pt-6">
+                <li className="flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                  <span>Hasta 150 socios activos</span>
+                </li>
+                <li className="flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                  <span>Semáforo de acceso &lt;2ms (DNI Numpad)</span>
+                </li>
+                <li className="flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                  <span>Control de cobranzas en mostrador</span>
+                </li>
+                <li className="flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                  <span>1 Sucursal / Sede</span>
+                </li>
+              </ul>
+            </div>
+            <button
+              onClick={() => setIsSubscriptionOpen(true)}
+              className="w-full mt-8 py-3.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-zinc-200 border border-zinc-800 font-bold text-xs transition-all hover:text-white"
+            >
+              Contratar Plan Starter
+            </button>
+          </div>
+
+          {/* Plan 2: Pro (Recomendado) */}
+          <div className="glass-panel p-8 rounded-3xl border-2 border-blue-500 flex flex-col justify-between relative shadow-2xl shadow-blue-500/10 bg-zinc-900/90">
+            <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 bg-blue-600 text-white font-mono text-[10px] font-bold uppercase tracking-wider px-3 py-1 rounded-full shadow-md">
+              🔥 Más Popular & Recomendado
+            </div>
+            <div>
+              <span className="text-xs uppercase font-mono font-bold text-blue-400 block mb-1">
+                Boxes & Gyms Medianos
+              </span>
+              <h3 className="text-2xl font-bold text-white mb-2">Pro Performance</h3>
+              <div className="my-4">
+                <span className="text-4xl font-black text-white font-mono">$34.900</span>
+                <span className="text-xs text-zinc-400 ml-1">ARS / mes</span>
+              </div>
+              <p className="text-xs text-zinc-400 mb-6">
+                Para centros deportivos que buscan seguridad y control total de caja.
+              </p>
+              <ul className="space-y-3 text-xs text-zinc-300 border-t border-zinc-800/80 pt-6">
+                <li className="flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                  <span><strong>Hasta 500 socios activos</strong></span>
+                </li>
+                <li className="flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                  <span>Fichas Médicas Cifradas (AES-256-GCM)</span>
+                </li>
+                <li className="flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                  <span>Split Payments (Efectivo + QR MP)</span>
+                </li>
+                <li className="flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                  <span>Arqueo Ciego de Caja diaria</span>
+                </li>
+                <li className="flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                  <span>Workout Builder + 1RM Epley con PRs 🏆</span>
+                </li>
+                <li className="flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                  <span>Motor Offline-First (IndexedDB Sync)</span>
+                </li>
+              </ul>
+            </div>
+            <button
+              onClick={() => setIsSubscriptionOpen(true)}
+              className="w-full mt-8 py-3.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs shadow-lg shadow-blue-600/25 transition-all hover:scale-[1.02] active:scale-[0.98]"
+            >
+              Contratar Plan Pro
+            </button>
+          </div>
+
+          {/* Plan 3: Enterprise */}
+          <div className="glass-panel p-8 rounded-3xl border border-zinc-800 flex flex-col justify-between hover:border-zinc-700 transition-all">
+            <div>
+              <span className="text-xs uppercase font-mono font-bold text-emerald-400 block mb-1">
+                Cadenas & Franquicias
+              </span>
+              <h3 className="text-2xl font-bold text-white mb-2">Enterprise Cadenas VIP</h3>
+              <div className="my-4">
+                <span className="text-4xl font-black text-white font-mono">$59.900</span>
+                <span className="text-xs text-zinc-400 ml-1">ARS / mes</span>
+              </div>
+              <p className="text-xs text-zinc-400 mb-6">
+                Infraestructura enterprise ilimitada con inteligencia de negocio.
+              </p>
+              <ul className="space-y-3 text-xs text-zinc-300 border-t border-zinc-800/80 pt-6">
+                <li className="flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                  <span><strong>Socios Ilimitados · Multi-Sucursal</strong></span>
+                </li>
+                <li className="flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                  <span>Modo Kiosco Táctil con Audio API</span>
+                </li>
+                <li className="flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                  <span>Executive BI con Matriz de Calor 7x24</span>
+                </li>
+                <li className="flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                  <span>Tours Guiados de Onboarding para Staff</span>
+                </li>
+                <li className="flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                  <span>Soporte Prioritario WhatsApp 24/7</span>
+                </li>
+              </ul>
+            </div>
+            <button
+              onClick={() => setIsSubscriptionOpen(true)}
+              className="w-full mt-8 py-3.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-emerald-400 hover:text-white border border-zinc-800 font-bold text-xs transition-all"
+            >
+              Contratar Plan Enterprise
+            </button>
+          </div>
+        </div>
+      </section>
+
+      {/* Subscription Bank Transfer Modal */}
+      <SaaSSubscriptionModal
+        isOpen={isSubscriptionOpen}
+        onClose={() => setIsSubscriptionOpen(false)}
+      />
+
       {/* Footer */}
       <footer className="border-t border-zinc-800/80 py-10 px-6 bg-zinc-950 text-center text-xs text-zinc-500 mt-auto">
         <div className="max-w-7xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-4">
@@ -463,8 +627,12 @@ export function PublicLandingPage({
             </div>
             <span className="font-semibold text-zinc-300">GymAI Enterprise SaaS</span>
           </div>
-          <p>© 2026 GymAI Platform. Arquitectura Multi-Tenant, Next.js 14, Tailwind & Drizzle ORM.</p>
+          <p>© 2026 GymAI Platform. Desarrollado por Litoral.dev (Ojeda Nicolas).</p>
           <div className="flex items-center gap-4 text-zinc-400">
+            <button onClick={() => setIsSubscriptionOpen(true)} className="hover:text-blue-400">
+              Datos de Pago (Alias/CVU)
+            </button>
+            <span>•</span>
             <button onClick={() => onEnterApp("checkin")} className="hover:text-white">
               Entrar al Dashboard
             </button>
@@ -474,3 +642,4 @@ export function PublicLandingPage({
     </div>
   );
 }
+
