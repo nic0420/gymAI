@@ -13,13 +13,14 @@ export function LiveWorkoutTracker({ tenantId, userId }: LiveWorkoutTrackerProps
   const [activeSession, setActiveSession] = useState(false);
   const [currentExercise, setCurrentExercise] = useState("Press de Banca con Barra");
   const [sets, setSets] = useState<
-    { setNumber: number; weightKg: number; repsDone: number; completed: boolean; estimated1RM: number; isPR?: boolean }
+    Array<{ setNumber: number; weightKg: number; repsDone: number; completed: boolean; estimated1RM: number; isPR?: boolean }>
   >([
     { setNumber: 1, weightKg: 80, repsDone: 10, completed: false, estimated1RM: 106.67 },
     { setNumber: 2, weightKg: 95, repsDone: 8, completed: false, estimated1RM: 120.33 },
     { setNumber: 3, weightKg: 110, repsDone: 6, completed: false, estimated1RM: 132.0, isPR: true },
     { setNumber: 4, weightKg: 115, repsDone: 4, completed: false, estimated1RM: 130.33 },
   ]);
+
 
   const [restTimer, setRestTimer] = useState<number | null>(null);
   const [sessionSummary, setSessionSummary] = useState<any | null>(null);
@@ -254,7 +255,9 @@ export function LiveWorkoutTracker({ tenantId, userId }: LiveWorkoutTrackerProps
             ))}
           </div>
         </div>
+      )}
     </div>
   );
 }
+
 
