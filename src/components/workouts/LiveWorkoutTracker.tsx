@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { Play, Check, Flame, Clock, Award, RotateCcw, ChevronRight } from "lucide-react";
+import { Play, Check, Flame, Clock, Award, RotateCcw, ChevronRight, Trophy, Sparkles, Dumbbell } from "lucide-react";
 import { calculateOneRepMax } from "@/lib/workouts/epley";
 
 interface LiveWorkoutTrackerProps {
@@ -13,16 +13,17 @@ export function LiveWorkoutTracker({ tenantId, userId }: LiveWorkoutTrackerProps
   const [activeSession, setActiveSession] = useState(false);
   const [currentExercise, setCurrentExercise] = useState("Press de Banca con Barra");
   const [sets, setSets] = useState<
-    { setNumber: number; weightKg: number; repsDone: number; completed: boolean; estimated1RM: number }[]
+    { setNumber: number; weightKg: number; repsDone: number; completed: boolean; estimated1RM: number; isPR?: boolean }
   >([
-    { setNumber: 1, weightKg: 70, repsDone: 10, completed: false, estimated1RM: 93.33 },
-    { setNumber: 2, weightKg: 80, repsDone: 8, completed: false, estimated1RM: 101.33 },
-    { setNumber: 3, weightKg: 85, repsDone: 6, completed: false, estimated1RM: 102.0 },
-    { setNumber: 4, weightKg: 90, repsDone: 4, completed: false, estimated1RM: 102.0 },
+    { setNumber: 1, weightKg: 80, repsDone: 10, completed: false, estimated1RM: 106.67 },
+    { setNumber: 2, weightKg: 95, repsDone: 8, completed: false, estimated1RM: 120.33 },
+    { setNumber: 3, weightKg: 110, repsDone: 6, completed: false, estimated1RM: 132.0, isPR: true },
+    { setNumber: 4, weightKg: 115, repsDone: 4, completed: false, estimated1RM: 130.33 },
   ]);
 
   const [restTimer, setRestTimer] = useState<number | null>(null);
   const [sessionSummary, setSessionSummary] = useState<any | null>(null);
+  const [prAlert, setPrAlert] = useState<{ exercise: string; rm: number } | null>(null);
 
   useEffect(() => {
     let interval: NodeJS.Timeout;
@@ -39,6 +40,13 @@ export function LiveWorkoutTracker({ tenantId, userId }: LiveWorkoutTrackerProps
     updated[idx].completed = !updated[idx].completed;
     const estimated = calculateOneRepMax(updated[idx].weightKg, updated[idx].repsDone);
     updated[idx].estimated1RM = estimated;
+    
+    // Si supera 130kg lanzamos alerta de PR
+    if (updated[idx].completed && estimated >= 130) {
+      updated[idx].isPR = true;
+      setPrAlert({ exercise: currentExercise, rm: estimated });
+    }
+
     setSets(updated);
 
     if (updated[idx].completed) {
@@ -49,10 +57,11 @@ export function LiveWorkoutTracker({ tenantId, userId }: LiveWorkoutTrackerProps
   const handleUpdateSet = (idx: number, field: "weightKg" | "repsDone", value: number) => {
     const updated = [...sets];
     updated[idx][field] = value;
-    updated[idx].estimated1RM = calculateOneRepMax(
+    const est = calculateOneRepMax(
       field === "weightKg" ? value : updated[idx].weightKg,
       field === "repsDone" ? value : updated[idx].repsDone
     );
+    updated[idx].estimated1RM = est;
     setSets(updated);
   };
 
@@ -65,19 +74,24 @@ export function LiveWorkoutTracker({ tenantId, userId }: LiveWorkoutTrackerProps
       completedSets: sets.filter((s) => s.completed).length,
     });
     setActiveSession(false);
+    setPrAlert(null);
   };
 
   return (
     <div className="space-y-6">
       {/* Header del Tracker */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
-          <h3 className="text-base font-bold text-white flex items-center gap-2">
-            <Flame className="w-5 h-5 text-amber-400" />
-            Live Workout Tracker (App Socio)
-          </h3>
-          <p className="text-xs text-slate-400">
-            Registro serie a serie con sobrecarga progresiva y cálculo de 1RM en tiempo real
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-lg bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400">
+              <Flame className="w-4 h-4" />
+            </div>
+            <h3 className="text-base font-bold text-white tracking-tight">
+              Live Workout Tracker & Estimador 1RM
+            </h3>
+          </div>
+          <p className="text-xs text-zinc-400 mt-1">
+            Registro serie a serie con sobrecarga progresiva y cálculo de 1RM con la <strong className="text-zinc-200">Fórmula de Epley</strong>.
           </p>
         </div>
 
@@ -87,40 +101,62 @@ export function LiveWorkoutTracker({ tenantId, userId }: LiveWorkoutTrackerProps
               setActiveSession(true);
               setSessionSummary(null);
             }}
-            className="px-5 py-2.5 rounded-2xl bg-emerald-500 hover:bg-emerald-400 text-black text-xs font-extrabold flex items-center gap-2 shadow-lg shadow-emerald-500/20 active:scale-95 transition-all"
+            className="px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold flex items-center gap-2 shadow-lg shadow-blue-600/25 active:scale-95 transition-all"
           >
-            <Play className="w-4 h-4 fill-black" />
+            <Play className="w-3.5 h-3.5 fill-white" />
             <span>Iniciar Entrenamiento Hoy</span>
           </button>
         ) : (
           <button
             onClick={handleFinishWorkout}
-            className="px-5 py-2.5 rounded-2xl bg-rose-500 hover:bg-rose-400 text-white text-xs font-bold active:scale-95 transition-all"
+            className="px-5 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold active:scale-95 transition-all shadow-md shadow-rose-600/20"
           >
             Finalizar Sesión
           </button>
         )}
       </div>
 
+      {/* PR Alert Banner */}
+      {prAlert && (
+        <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-300 flex items-center justify-between shadow-lg shadow-amber-500/10 animate-in fade-in slide-in-from-top-2">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-300">
+              <Trophy className="w-5 h-5 animate-bounce" />
+            </div>
+            <div>
+              <h4 className="text-xs font-black uppercase tracking-wider text-amber-400">
+                🏆 ¡Nuevo Récord Personal Detectado!
+              </h4>
+              <p className="text-xs text-zinc-300">
+                Has alcanzado un nuevo 1RM estimado de <strong className="text-white font-mono">{prAlert.rm} kg</strong> en {prAlert.exercise}.
+              </p>
+            </div>
+          </div>
+          <span className="text-[10px] font-mono text-amber-400/80 bg-amber-500/10 px-2.5 py-1 rounded-full border border-amber-500/20 hidden sm:inline">
+            Epley: W × (1 + R/30)
+          </span>
+        </div>
+      )}
+
       {/* Resumen de Sesión Finalizada */}
       {sessionSummary && (
-        <div className="p-6 rounded-3xl bg-slate-950 border border-emerald-500/40 shadow-xl space-y-3 animate-in fade-in">
+        <div className="p-6 rounded-3xl bg-zinc-900 border border-emerald-500/40 shadow-xl space-y-4 animate-in fade-in">
           <div className="flex items-center gap-2 text-emerald-400 font-bold text-sm">
             <Award className="w-5 h-5" />
-            <span>¡Entrenamiento Completado con Éxito!</span>
+            <span>¡Entrenamiento Completado y Guardado con Éxito!</span>
           </div>
-          <div className="grid grid-cols-3 gap-4 font-mono text-xs">
-            <div className="p-3 bg-slate-900 rounded-xl">
-              <span className="text-slate-500 block">Volumen Total</span>
-              <span className="text-lg font-bold text-white">{sessionSummary.totalVolumeKg} kg</span>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 font-mono text-xs">
+            <div className="p-3.5 bg-zinc-950 rounded-xl border border-zinc-800">
+              <span className="text-zinc-500 block mb-1">Volumen Total Levantado</span>
+              <span className="text-xl font-bold text-white">{sessionSummary.totalVolumeKg} kg</span>
             </div>
-            <div className="p-3 bg-slate-900 rounded-xl">
-              <span className="text-slate-500 block">1RM Máximo Estimado</span>
-              <span className="text-lg font-bold text-amber-400">{sessionSummary.max1RM} kg</span>
+            <div className="p-3.5 bg-zinc-950 rounded-xl border border-zinc-800">
+              <span className="text-zinc-500 block mb-1">1RM Máximo Estimado</span>
+              <span className="text-xl font-bold text-amber-400">{sessionSummary.max1RM} kg</span>
             </div>
-            <div className="p-3 bg-slate-900 rounded-xl">
-              <span className="text-slate-500 block">Series Completadas</span>
-              <span className="text-lg font-bold text-emerald-400">{sessionSummary.completedSets} series</span>
+            <div className="p-3.5 bg-zinc-950 rounded-xl border border-zinc-800">
+              <span className="text-zinc-500 block mb-1">Series Completadas</span>
+              <span className="text-xl font-bold text-emerald-400">{sessionSummary.completedSets} series</span>
             </div>
           </div>
         </div>
@@ -128,18 +164,21 @@ export function LiveWorkoutTracker({ tenantId, userId }: LiveWorkoutTrackerProps
 
       {/* Panel Activo del Entrenamiento */}
       {activeSession && (
-        <div className="glass-panel p-6 rounded-3xl border border-slate-800 space-y-6">
-          <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+        <div className="glass-panel p-6 rounded-3xl border border-zinc-800 space-y-6">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between pb-4 border-b border-zinc-800 gap-3">
             <div>
-              <span className="text-xs font-bold text-emerald-400 uppercase tracking-wider block">
-                Ejercicio 1 / 4
+              <span className="text-xs font-bold text-blue-400 uppercase tracking-wider block mb-0.5">
+                Ejercicio Activo (1 de 4)
               </span>
-              <h4 className="text-lg font-black text-white">{currentExercise}</h4>
+              <h4 className="text-lg font-black text-white flex items-center gap-2">
+                <Dumbbell className="w-5 h-5 text-zinc-400" />
+                {currentExercise}
+              </h4>
             </div>
 
             {/* Temporizador de Descanso Flotante */}
             {restTimer !== null && (
-              <div className="flex items-center gap-2 px-4 py-2 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-400 font-mono text-sm font-bold animate-pulse">
+              <div className="flex items-center gap-2 px-4 py-2 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-400 font-mono text-xs font-bold animate-pulse">
                 <Clock className="w-4 h-4" />
                 <span>Descanso: {restTimer}s</span>
               </div>
@@ -148,7 +187,7 @@ export function LiveWorkoutTracker({ tenantId, userId }: LiveWorkoutTrackerProps
 
           {/* Tabla de Series */}
           <div className="space-y-2.5">
-            <div className="grid grid-cols-12 gap-2 text-[11px] font-bold text-slate-500 uppercase px-3">
+            <div className="grid grid-cols-12 gap-2 text-[11px] font-bold text-zinc-500 uppercase px-3">
               <span className="col-span-2">Serie</span>
               <span className="col-span-3">Peso (kg)</span>
               <span className="col-span-3">Reps</span>
@@ -161,12 +200,12 @@ export function LiveWorkoutTracker({ tenantId, userId }: LiveWorkoutTrackerProps
                 key={idx}
                 className={`grid grid-cols-12 gap-2 items-center p-3 rounded-2xl border transition-all ${
                   set.completed
-                    ? "bg-emerald-950/20 border-emerald-500/30 text-slate-300"
-                    : "bg-slate-950/80 border-slate-800 text-white"
+                    ? "bg-emerald-950/20 border-emerald-500/30 text-zinc-300"
+                    : "bg-zinc-950 border-zinc-800 text-white"
                 }`}
               >
-                <div className="col-span-2 font-mono font-bold flex items-center gap-1">
-                  <span className="w-6 h-6 rounded-lg bg-slate-800 flex items-center justify-center text-xs">
+                <div className="col-span-2 font-mono font-bold flex items-center gap-1.5">
+                  <span className="w-6 h-6 rounded-lg bg-zinc-800 text-zinc-300 flex items-center justify-center text-xs">
                     {set.setNumber}
                   </span>
                 </div>
@@ -176,7 +215,7 @@ export function LiveWorkoutTracker({ tenantId, userId }: LiveWorkoutTrackerProps
                     type="number"
                     value={set.weightKg}
                     onChange={(e) => handleUpdateSet(idx, "weightKg", Number(e.target.value))}
-                    className="w-full h-9 px-2 bg-slate-900 border border-slate-800 rounded-xl text-center font-mono font-bold text-xs text-white outline-none focus:border-emerald-400"
+                    className="w-full h-9 px-2 bg-zinc-900 border border-zinc-800 rounded-xl text-center font-mono font-bold text-xs text-white outline-none focus:border-blue-500 transition-colors"
                   />
                 </div>
 
@@ -185,15 +224,15 @@ export function LiveWorkoutTracker({ tenantId, userId }: LiveWorkoutTrackerProps
                     type="number"
                     value={set.repsDone}
                     onChange={(e) => handleUpdateSet(idx, "repsDone", Number(e.target.value))}
-                    className="w-full h-9 px-2 bg-slate-900 border border-slate-800 rounded-xl text-center font-mono font-bold text-xs text-white outline-none focus:border-emerald-400"
+                    className="w-full h-9 px-2 bg-zinc-900 border border-zinc-800 rounded-xl text-center font-mono font-bold text-xs text-white outline-none focus:border-blue-500 transition-colors"
                   />
                 </div>
 
-                <div className="col-span-3 font-mono text-xs font-bold text-amber-400 flex items-center gap-1">
+                <div className="col-span-3 font-mono text-xs font-bold text-amber-400 flex items-center gap-1.5">
                   <span>{set.estimated1RM} kg</span>
-                  {set.estimated1RM >= 100 && (
-                    <span className="text-[9px] px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300">
-                      PR 🔥
+                  {set.isPR && (
+                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                      PR 🏆
                     </span>
                   )}
                 </div>
@@ -204,8 +243,8 @@ export function LiveWorkoutTracker({ tenantId, userId }: LiveWorkoutTrackerProps
                     onClick={() => handleCompleteSet(idx)}
                     className={`w-8 h-8 rounded-xl flex items-center justify-center transition-all ${
                       set.completed
-                        ? "bg-emerald-500 text-black shadow-lg shadow-emerald-500/30"
-                        : "bg-slate-800 text-slate-500 hover:text-white"
+                        ? "bg-emerald-500 text-zinc-950 shadow-md shadow-emerald-500/30"
+                        : "bg-zinc-800 text-zinc-400 hover:text-white hover:bg-zinc-700"
                     }`}
                   >
                     <Check className="w-4 h-4" />
@@ -215,7 +254,7 @@ export function LiveWorkoutTracker({ tenantId, userId }: LiveWorkoutTrackerProps
             ))}
           </div>
         </div>
-      )}
     </div>
   );
 }
+

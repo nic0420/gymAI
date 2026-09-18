@@ -10,17 +10,39 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
+        brand: {
+          50: "#eff6ff",
+          100: "#dbeafe",
+          400: "#60a5fa",
+          500: "#3b82f6",
+          600: "#2563eb",
+          700: "#1d4ed8",
+        },
         gym: {
-          900: "#090d16",
-          800: "#0f172a",
-          700: "#1e293b",
-          600: "#334155",
-          brand: "#10b981",
-          "brand-dark": "#059669",
+          950: "#09090b",
+          900: "#18181b",
+          800: "#27272a",
+          700: "#3f3f46",
+          brand: "#2563eb",
+          "brand-dark": "#1d4ed8",
           accent: "#38bdf8",
           warning: "#f59e0b",
-          danger: "#ef4444",
-          success: "#22c55e",
+          danger: "#f43f5e",
+          success: "#10b981",
+        },
+      },
+      fontFamily: {
+        sans: ["var(--font-geist-sans)", "Inter", "-apple-system", "BlinkMacSystemFont", "Segoe UI", "sans-serif"],
+        mono: ["var(--font-geist-mono)", "ui-monospace", "SFMono-Regular", "Menlo", "monospace"],
+      },
+      animation: {
+        "pulse-slow": "pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite",
+        "glow-fade": "glowFade 2s ease-in-out infinite alternate",
+      },
+      keyframes: {
+        glowFade: {
+          "0%": { opacity: "0.4" },
+          "100%": { opacity: "0.9" },
         },
       },
     },
@@ -28,3 +50,4 @@ const config: Config = {
   plugins: [],
 };
 export default config;
+
