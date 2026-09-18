@@ -28,7 +28,9 @@ import {
   LayoutDashboard,
   Bell,
   Sparkles,
+  CreditCard,
 } from "lucide-react";
+
 import { CheckInTerminal } from "@/components/reception/CheckInTerminal";
 import { MemberList } from "@/components/users/MemberList";
 import { CashRegisterView } from "@/components/finance/CashRegisterView";
