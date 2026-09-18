@@ -88,20 +88,24 @@ export function decryptFromString(packedCipher: string): string {
  * Descifra un payload cifrado AES-256-GCM validando su Tag.
  */
 export function decryptData(payload: EncryptedPayload): string {
-  const masterKey = getMasterKey();
-  const iv = Buffer.from(payload.iv, "base64");
-  const authTag = Buffer.from(payload.authTag, "base64");
+  try {
+    const masterKey = getMasterKey();
+    const iv = Buffer.from(payload.iv, "base64");
+    const authTag = Buffer.from(payload.authTag, "base64");
 
-  const decipher = crypto.createDecipheriv(ALGORITHM, masterKey, iv, {
-    authTagLength: AUTH_TAG_LENGTH,
-  });
+    const decipher = crypto.createDecipheriv(ALGORITHM, masterKey, iv, {
+      authTagLength: AUTH_TAG_LENGTH,
+    });
 
-  decipher.setAuthTag(authTag);
+    decipher.setAuthTag(authTag);
 
-  let decrypted = decipher.update(payload.cipherText, "base64", "utf8");
-  decrypted += decipher.final("utf8");
+    let decrypted = decipher.update(payload.cipherText, "base64", "utf8");
+    decrypted += decipher.final("utf8");
 
-  return decrypted;
+    return decrypted;
+  } catch (err: any) {
+    throw new Error("INTEGRITY_CHECK_FAILED: Datos cifrados o AuthTag adulterados");
+  }
 }
 
 /**

@@ -46,7 +46,20 @@ export async function evaluateAndProcessCheckIn(params: {
   const todayStr = now.toISOString().split("T")[0]; // YYYY-MM-DD
   const nowIso = now.toISOString();
 
-  const dniClean = params.dni.trim();
+  const rawDni = params?.dni ?? "";
+  const dniClean = typeof rawDni === "string" ? rawDni.trim() : "";
+
+  if (!dniClean || !params?.tenantId || !params?.branchId) {
+    const elapsed = Math.round((performance.now() - startTime) * 100) / 100;
+    return {
+      accessStatus: "DENIED_RED",
+      message: "Acceso Denegado: Parámetros de check-in inválidos o DNI no proporcionado",
+      denialReason: "Parámetros inválidos o DNI vacío",
+      checkInAt: nowIso,
+      executionTimeMs: elapsed,
+    };
+  }
+
   const dniBlindIndex = generateBlindIndex(dniClean);
 
   // 1. Búsqueda Ultrarrápida por Blind Index
@@ -111,6 +124,8 @@ export async function evaluateAndProcessCheckIn(params: {
   let warningReason: string | undefined;
   let denialReason: string | undefined;
 
+  const todayMidnight = new Date(todayStr).getTime();
+
   // 3. Reglas de Validación de Suscripción
   if (!latestSubscription) {
     accessStatus = "DENIED_RED";
@@ -129,10 +144,9 @@ export async function evaluateAndProcessCheckIn(params: {
     message = `Paso Autorizado con Advertencia: Cuota en período de gracia`;
     warningReason = `Regularizar pago antes del fin de gracia`;
   } else {
-    // Verificar si vence en los próximos 3 días
-    const diffDays = Math.ceil(
-      (new Date(latestSubscription.endDate).getTime() - now.getTime()) / (1000 * 60 * 60 * 24)
-    );
+    // Verificar si vence en los próximos 3 días (calendario)
+    const endMidnight = new Date(latestSubscription.endDate).getTime();
+    const diffDays = Math.round((endMidnight - todayMidnight) / (1000 * 60 * 60 * 24));
     if (diffDays <= 3 && diffDays >= 0) {
       accessStatus = "WARNING_YELLOW";
       message = `Paso Autorizado: Tu membresía vence en ${diffDays} día(s) (${latestSubscription.endDate})`;
@@ -152,9 +166,8 @@ export async function evaluateAndProcessCheckIn(params: {
       denialReason = "Apto médico caducado";
     } else if (medical.clearanceExpiryDate) {
       // Verificar si el apto vence en ≤ 7 días
-      const medicalDiffDays = Math.ceil(
-        (new Date(medical.clearanceExpiryDate).getTime() - now.getTime()) / (1000 * 60 * 60 * 24)
-      );
+      const medEndMidnight = new Date(medical.clearanceExpiryDate).getTime();
+      const medicalDiffDays = Math.round((medEndMidnight - todayMidnight) / (1000 * 60 * 60 * 24));
       if (medicalDiffDays <= 7 && medicalDiffDays >= 0) {
         accessStatus = "WARNING_YELLOW";
         message = `Paso Autorizado: Apto médico vence en ${medicalDiffDays} día(s) (${medical.clearanceExpiryDate})`;

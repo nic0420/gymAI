@@ -11,10 +11,11 @@ import { runWorkoutBuilderTests } from "./workout-builder.test";
 import { runOneRepMaxTrackerTests } from "./one-rep-max-tracker.test";
 import { runBiAnalyticsTests } from "./bi-analytics.test";
 import { runKioskAndOnboardingTests } from "./kiosk-and-onboarding.test";
+import { runBoundaryAndStressTests } from "./boundary-and-qa-stress.test";
 
 async function main() {
   console.log("==========================================================================");
-  console.log("🚀 EJECUTANDO SUITE COMPLETA DE PRUEBAS AUTOMATIZADAS (ETAPAS 1, 2, 3, 4 & 5)");
+  console.log("🚀 EJECUTANDO SUITE COMPLETA DE PRUEBAS AUTOMATIZADAS (ETAPAS 1 A 6)");
   console.log("==========================================================================");
 
   const startTime = Date.now();
@@ -33,14 +34,15 @@ async function main() {
     const s11 = await runOneRepMaxTrackerTests();
     const s12 = await runBiAnalyticsTests();
     const s13 = await runKioskAndOnboardingTests();
+    const s14 = await runBoundaryAndStressTests();
 
     const elapsed = ((Date.now() - startTime) / 1000).toFixed(2);
-    const allPassed = s1 && s2 && s3 && s4 && s5 && s6 && s7 && s8 && s9 && s10 && s11 && s12 && s13;
+    const allPassed = s1 && s2 && s3 && s4 && s5 && s6 && s7 && s8 && s9 && s10 && s11 && s12 && s13 && s14;
 
     console.log("\n==========================================================================");
     if (allPassed) {
-      console.log(`🎉 TODAS LAS 13 SUITES DE PRUEBAS PASARON EXITOSAMENTE (${elapsed}s)`);
-      console.log("Seguridad, ERD, RTR, RBAC, Semáforo, Offline Sync, Split Payments, Caja, Webhooks, Rutinas, 1RM Epley, Heatmaps BI y Modo Kiosco Táctil 100% OPERATIVOS.");
+      console.log(`🎉 TODAS LAS 14 SUITES DE PRUEBAS PASARON EXITOSAMENTE (${elapsed}s)`);
+      console.log("Seguridad, ERD, RTR, RBAC, Semáforo, Offline Sync, Split Payments, Caja, Webhooks, Rutinas, 1RM Epley, Heatmaps BI, Modo Kiosco y Pruebas de Límites 100% OPERATIVOS.");
       console.log("==========================================================================");
       process.exit(0);
     } else {
