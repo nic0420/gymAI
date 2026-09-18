@@ -1,0 +1,39 @@
+{
+  "name": "gymai-saas",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Plataforma SaaS Integral de Gestión de Gimnasios de Nivel Enterprise",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "db:generate": "drizzle-kit generate",
+    "db:push": "drizzle-kit push",
+    "test": "tsx tests/run-all-tests.ts"
+  },
+  "dependencies": {
+    "clsx": "^2.1.1",
+    "drizzle-orm": "^0.33.0",
+    "jose": "^5.9.6",
+    "lucide-react": "^0.441.0",
+    "next": "^14.2.13",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "tailwind-merge": "^2.5.2",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@types/node": "^20.16.5",
+    "@types/react": "^18.3.5",
+    "@types/react-dom": "^18.3.0",
+    "autoprefixer": "^10.4.20",
+    "better-sqlite3": "^11.3.0",
+    "@types/better-sqlite3": "^7.6.11",
+    "drizzle-kit": "^0.24.2",
+    "postcss": "^8.4.45",
+    "tailwindcss": "^3.4.11",
+    "tsx": "^4.19.1",
+    "typescript": "^5.6.2"
+  }
+}
