@@ -13,9 +13,11 @@ import {
   RotateCcw,
   Sparkles,
   Delete,
-  Search
+  Search,
+  MessageCircle,
 } from "lucide-react";
 import type { CheckInResult } from "@/lib/attendance/checkin-engine";
+import { generateWhatsAppLink } from "@/lib/whatsapp/whatsapp-helper";
 
 interface CheckInTerminalProps {
   tenantId: string;
@@ -293,6 +295,24 @@ export function CheckInTerminal({ tenantId, branchId }: CheckInTerminalProps) {
                     </span>
                   </div>
                 </div>
+
+                {/* Botón de WhatsApp Directo para Recepción */}
+                {lastResult.accessStatus !== "GRANTED_GREEN" && (
+                  <a
+                    href={generateWhatsAppLink({
+                      memberName: lastResult.user.firstName,
+                      type: lastResult.accessStatus === "DENIED_RED" ? "DEBT_REMINDER" : "DUE_SOON",
+                      dueDate: lastResult.subscription?.endDate,
+                      gymName: "GymAI",
+                    })}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="w-full h-11 rounded-2xl bg-emerald-500 hover:bg-emerald-400 text-black text-xs font-bold flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/20 active:scale-95 transition-all"
+                  >
+                    <MessageCircle className="w-4 h-4" />
+                    <span>Enviar Aviso & Alias por WhatsApp</span>
+                  </a>
+                )}
               </div>
             ) : (
               <div className="text-center py-6">

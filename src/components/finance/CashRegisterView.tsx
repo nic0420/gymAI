@@ -11,8 +11,10 @@ import {
   RefreshCw,
   AlertTriangle,
   CheckCircle2,
-  FileText
+  FileText,
+  Download,
 } from "lucide-react";
+import { exportCashMovementsToCsv } from "@/lib/export/csv-exporter";
 
 interface CashRegisterViewProps {
   tenantId: string;
@@ -142,7 +144,7 @@ export function CashRegisterView({ tenantId, branchId }: CashRegisterViewProps) 
           </p>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2.5">
           <button
             onClick={fetchCashShift}
             disabled={loading}
@@ -151,6 +153,23 @@ export function CashRegisterView({ tenantId, branchId }: CashRegisterViewProps) 
             <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
             <span>Actualizar</span>
           </button>
+
+          {shiftData?.movements && shiftData.movements.length > 0 && (
+            <button
+              onClick={() =>
+                exportCashMovementsToCsv(
+                  shiftData.movements,
+                  shiftData.shift,
+                  `arqueo_caja_${new Date().toISOString().split("T")[0]}.csv`
+                )
+              }
+              className="h-11 px-3.5 rounded-2xl bg-slate-900 border border-slate-800 text-slate-300 hover:text-white hover:border-slate-700 flex items-center gap-1.5 text-xs font-semibold"
+              title="Descargar Arqueo en Excel"
+            >
+              <Download className="w-4 h-4 text-emerald-400" />
+              <span>Exportar Caja</span>
+            </button>
+          )}
 
           {!shiftData?.shift ? (
             <button

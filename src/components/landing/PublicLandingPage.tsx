@@ -18,6 +18,9 @@ import {
   Layers,
   Flame,
   HelpCircle,
+  Calculator,
+  Sparkles,
+  Database,
 } from "lucide-react";
 import { SaaSSubscriptionModal } from "@/components/billing/SaaSSubscriptionModal";
 
@@ -36,19 +39,61 @@ export function PublicLandingPage({
 }: PublicLandingProps) {
   const [activeTabDemo, setActiveTabDemo] = useState<"pass" | "warn" | "deny">("pass");
   const [isSubscriptionOpen, setIsSubscriptionOpen] = useState(false);
+  const [roiMembers, setRoiMembers] = useState(200);
+  const [roiFee, setRoiFee] = useState(25000);
+  const [seedingDemo, setSeedingDemo] = useState(false);
+  const [seedSuccess, setSeedSuccess] = useState<string | null>(null);
+
+  const handleSeedDemo = async () => {
+    setSeedingDemo(true);
+    setSeedSuccess(null);
+    try {
+      const res = await fetch("/api/v1/admin/seed-demo", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tenantId: "gimnasio-libertad" }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setSeedSuccess("¡Datos demo cargados con éxito! Entrando al sistema...");
+        setTimeout(() => {
+          onEnterApp("checkin");
+        }, 1200);
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setSeedingDemo(false);
+    }
+  };
 
 
   return (
     <div className="min-h-screen bg-zinc-950 text-zinc-100 flex flex-col selection:bg-blue-500 selection:text-white">
       {/* Top Banner / Announcement */}
-      <div className="border-b border-zinc-800/80 bg-zinc-900/40 px-4 py-2 flex items-center justify-between text-xs text-zinc-400 max-w-7xl mx-auto w-full">
-        <div>
-          <span className="font-semibold text-blue-400">GymAI v1.0 Enterprise</span> — Infraestructura distribuida para cadenas de gimnasios con soporte Offline-First.
+      <div className="border-b border-zinc-800/80 bg-zinc-900/40 px-4 py-2 flex flex-col sm:flex-row items-center justify-between text-xs text-zinc-400 max-w-7xl mx-auto w-full gap-2">
+        <div className="flex items-center gap-2">
+          <span className="font-semibold text-blue-400">GymAI v1.0 Enterprise</span> — Infraestructura distribuida con soporte Offline-First.
+          {seedSuccess && (
+            <span className="text-emerald-400 font-mono text-[11px] bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
+              {seedSuccess}
+            </span>
+          )}
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2.5">
+          <button
+            onClick={handleSeedDemo}
+            disabled={seedingDemo}
+            className="px-3 py-1 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 font-semibold text-xs transition-all flex items-center gap-1.5"
+            title="Cargar socios, asistencias y facturación de prueba para presentación"
+          >
+            <Database className="w-3.5 h-3.5" />
+            <span>{seedingDemo ? "Cargando..." : "⚡ Cargar Gimnasio Demo"}</span>
+          </button>
+
           <button
             onClick={onOpenLogin}
-            className="px-3 py-1 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-semibold transition-all shadow-sm"
+            className="px-3 py-1 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-semibold transition-all shadow-sm text-xs"
           >
             Iniciar Sesión / Acceso
           </button>
@@ -89,8 +134,16 @@ export function PublicLandingPage({
               onClick={() => onEnterApp("checkin")}
               className="w-full sm:w-auto px-8 py-4 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-semibold text-sm shadow-xl shadow-blue-600/25 transition-all hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center gap-2 group"
             >
-              <span>Iniciar Prueba Gratuita</span>
+              <span>Entrar al Sistema</span>
               <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+            </button>
+            <button
+              onClick={handleSeedDemo}
+              disabled={seedingDemo}
+              className="w-full sm:w-auto px-6 py-4 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-emerald-400 border border-emerald-500/30 font-semibold text-sm transition-all flex items-center justify-center gap-2"
+            >
+              <Sparkles className="w-4 h-4" />
+              <span>{seedingDemo ? "Generando datos..." : "Probar con Datos Demo (1-Click)"}</span>
             </button>
             <button
               onClick={() => onLaunchTour("receptionist")}
@@ -450,6 +503,122 @@ export function PublicLandingPage({
                   className="w-full py-2.5 rounded-xl bg-zinc-800 text-zinc-400 text-xs font-semibold cursor-not-allowed"
                 >
                   🔒 Sellar Turno de Caja (Auditoría Ciega)
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Calculadora Interactiva de ROI para Dueños de Gimnasio */}
+      <section className="py-20 max-w-7xl mx-auto px-6 w-full border-t border-zinc-900">
+        <div className="glass-panel p-8 md:p-12 rounded-3xl border border-zinc-800 bg-gradient-to-b from-zinc-900/90 via-zinc-950 to-zinc-950 relative overflow-hidden shadow-2xl">
+          <div className="absolute top-0 right-0 w-96 h-96 bg-blue-500/10 rounded-full blur-[100px] pointer-events-none" />
+
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-center relative z-10">
+            {/* Columna Izquierda: Sliders */}
+            <div className="lg:col-span-7 space-y-6">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-xs font-mono text-emerald-400">
+                <Calculator className="w-3.5 h-3.5" />
+                CALCULADORA DE RETORNO DE INVERSIÓN (ROI)
+              </div>
+
+              <h3 className="text-2xl sm:text-4xl font-extrabold text-white tracking-tight leading-tight">
+                ¿Cuánto dinero estás perdiendo hoy sin control automático?
+              </h3>
+              <p className="text-sm text-zinc-400">
+                Ajusta los valores de tu gimnasio para calcular la recuperación mensual estimada de cuotas impagas y fugas en recepción.
+              </p>
+
+              {/* Slider 1: Cantidad de Socios */}
+              <div className="space-y-2 p-4 rounded-2xl bg-zinc-900/60 border border-zinc-800">
+                <div className="flex justify-between items-center text-xs">
+                  <span className="text-zinc-400 font-medium">Cantidad de Socios Activos:</span>
+                  <span className="text-white font-mono font-bold text-sm bg-zinc-950 px-3 py-1 rounded-lg border border-zinc-800">
+                    {roiMembers} socios
+                  </span>
+                </div>
+                <input
+                  type="range"
+                  min={50}
+                  max={1000}
+                  step={25}
+                  value={roiMembers}
+                  onChange={(e) => setRoiMembers(Number(e.target.value))}
+                  className="w-full accent-blue-500 h-2 bg-zinc-800 rounded-lg cursor-pointer"
+                />
+                <div className="flex justify-between text-[10px] text-zinc-500 font-mono">
+                  <span>50 socios</span>
+                  <span>500 socios</span>
+                  <span>1.000 socios</span>
+                </div>
+              </div>
+
+              {/* Slider 2: Cuota Promedio */}
+              <div className="space-y-2 p-4 rounded-2xl bg-zinc-900/60 border border-zinc-800">
+                <div className="flex justify-between items-center text-xs">
+                  <span className="text-zinc-400 font-medium">Valor Promedio de la Cuota Mensual:</span>
+                  <span className="text-emerald-400 font-mono font-bold text-sm bg-zinc-950 px-3 py-1 rounded-lg border border-zinc-800">
+                    ${roiFee.toLocaleString()} ARS
+                  </span>
+                </div>
+                <input
+                  type="range"
+                  min={15000}
+                  max={50000}
+                  step={1000}
+                  value={roiFee}
+                  onChange={(e) => setRoiFee(Number(e.target.value))}
+                  className="w-full accent-emerald-500 h-2 bg-zinc-800 rounded-lg cursor-pointer"
+                />
+                <div className="flex justify-between text-[10px] text-zinc-500 font-mono">
+                  <span>$15.000 ARS</span>
+                  <span>$30.000 ARS</span>
+                  <span>$50.000 ARS</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Columna Derecha: Tarjeta de Retorno */}
+            <div className="lg:col-span-5">
+              <div className="p-6 sm:p-8 rounded-3xl bg-zinc-950/90 border-2 border-emerald-500/30 shadow-2xl shadow-emerald-500/10 space-y-6">
+                <div>
+                  <span className="text-xs uppercase font-mono text-zinc-400 block mb-1">
+                    Fuga mensual evitada (6% morosidad promedio)
+                  </span>
+                  <div className="text-3xl sm:text-4xl font-black text-emerald-400 font-mono">
+                    +${Math.round(roiMembers * 0.06 * roiFee).toLocaleString()} ARS
+                  </div>
+                  <p className="text-xs text-zinc-500 mt-1">
+                    Dinero que recuperas automáticamente con el semáforo y avisos por WhatsApp.
+                  </p>
+                </div>
+
+                <div className="border-t border-zinc-800 pt-4 space-y-2.5 text-xs">
+                  <div className="flex justify-between text-zinc-400">
+                    <span>Inversión Plan Pro GymAI:</span>
+                    <span className="font-mono text-white">$34.900 ARS / mes</span>
+                  </div>
+                  <div className="flex justify-between text-zinc-400">
+                    <span>Ganancia Neta Extra para vos:</span>
+                    <span className="font-mono text-emerald-400 font-bold">
+                      +${Math.max(0, Math.round(roiMembers * 0.06 * roiFee) - 34900).toLocaleString()} ARS / mes
+                    </span>
+                  </div>
+                  <div className="flex justify-between text-zinc-400">
+                    <span>Tiempo de Amortización:</span>
+                    <span className="font-mono text-blue-400 font-bold">
+                      Se paga solo en {Math.max(1, Math.min(10, Math.round(34900 / ((roiMembers * 0.06 * roiFee) / 30))))} días ⚡
+                    </span>
+                  </div>
+                </div>
+
+                <button
+                  onClick={() => setIsSubscriptionOpen(true)}
+                  className="w-full py-4 rounded-2xl bg-emerald-500 hover:bg-emerald-400 text-black font-extrabold text-xs tracking-wider uppercase shadow-lg shadow-emerald-500/20 active:scale-95 transition-all flex items-center justify-center gap-2"
+                >
+                  <Sparkles className="w-4 h-4" />
+                  <span>Empezar a Recuperar Dinero</span>
                 </button>
               </div>
             </div>

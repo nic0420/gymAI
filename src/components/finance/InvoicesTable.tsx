@@ -1,8 +1,10 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { FileText, DollarSign, Search, RefreshCw, CheckCircle2, Clock } from "lucide-react";
+import { FileText, DollarSign, Search, RefreshCw, CheckCircle2, Clock, Download, MessageCircle } from "lucide-react";
 import { QuickPaymentModal } from "./QuickPaymentModal";
+import { exportInvoicesToCsv } from "@/lib/export/csv-exporter";
+import { generateWhatsAppLink } from "@/lib/whatsapp/whatsapp-helper";
 
 interface InvoicesTableProps {
   tenantId: string;
@@ -33,21 +35,39 @@ export function InvoicesTable({ tenantId, cashShiftId }: InvoicesTableProps) {
     fetchInvoices();
   }, [tenantId]);
 
+  const handleExportCsv = () => {
+    if (invoices.length === 0) return;
+    exportInvoicesToCsv(invoices, `facturas_gym_${new Date().toISOString().split("T")[0]}.csv`);
+  };
+
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
         <h3 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
           <FileText className="w-4 h-4 text-emerald-400" />
           Facturas & Obligaciones de Cobro
         </h3>
-        <button
-          onClick={fetchInvoices}
-          disabled={loading}
-          className="px-3 py-1.5 rounded-xl bg-slate-900 border border-slate-800 text-slate-400 hover:text-white flex items-center gap-1.5 text-xs font-semibold"
-        >
-          <RefreshCw className={`w-3.5 h-3.5 ${loading ? "animate-spin" : ""}`} />
-          <span>Actualizar</span>
-        </button>
+
+        <div className="flex items-center gap-2">
+          <button
+            onClick={fetchInvoices}
+            disabled={loading}
+            className="px-3 py-1.5 rounded-xl bg-slate-900 border border-slate-800 text-slate-400 hover:text-white flex items-center gap-1.5 text-xs font-semibold"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${loading ? "animate-spin" : ""}`} />
+            <span>Actualizar</span>
+          </button>
+
+          <button
+            onClick={handleExportCsv}
+            disabled={invoices.length === 0}
+            className="px-3 py-1.5 rounded-xl bg-slate-900 border border-slate-800 text-slate-300 hover:text-white hover:border-slate-700 flex items-center gap-1.5 text-xs font-semibold transition-all disabled:opacity-50"
+            title="Descargar Excel para el Contador"
+          >
+            <Download className="w-3.5 h-3.5 text-emerald-400" />
+            <span>Descargar Excel</span>
+          </button>
+        </div>
       </div>
 
       <div className="glass-panel rounded-3xl border border-slate-800 overflow-hidden">
@@ -79,6 +99,15 @@ export function InvoicesTable({ tenantId, cashShiftId }: InvoicesTableProps) {
               ) : (
                 invoices.map((inv) => {
                   const remaining = inv.totalAmount - inv.paidAmount;
+                  const isPending = inv.status !== "PAID";
+                  const waUrl = generateWhatsAppLink({
+                    memberName: "Socio",
+                    type: "DEBT_REMINDER",
+                    amount: remaining,
+                    dueDate: inv.dueDate,
+                    gymName: "GymAI",
+                  });
+
                   return (
                     <tr key={inv.id} className="hover:bg-slate-800/30">
                       <td className="py-3 px-6 font-mono font-bold text-white">
@@ -108,8 +137,20 @@ export function InvoicesTable({ tenantId, cashShiftId }: InvoicesTableProps) {
                             : "Pendiente"}
                         </span>
                       </td>
-                      <td className="py-3 px-6 text-right">
-                        {inv.status !== "PAID" && (
+                      <td className="py-3 px-6 text-right flex items-center justify-end gap-2">
+                        {isPending && (
+                          <a
+                            href={waUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="p-1.5 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 transition-colors"
+                            title="Enviar Link de Pago por WhatsApp"
+                          >
+                            <MessageCircle className="w-3.5 h-3.5" />
+                          </a>
+                        )}
+
+                        {isPending && (
                           <button
                             onClick={() =>
                               setSelectedInvoice({
@@ -121,7 +162,7 @@ export function InvoicesTable({ tenantId, cashShiftId }: InvoicesTableProps) {
                                 memberName: "Socio",
                               })
                             }
-                            className="px-3 py-1.5 rounded-xl bg-emerald-500/10 hover:bg-emerald-500 text-emerald-400 hover:text-black font-bold text-xs border border-emerald-500/30 transition-all flex items-center gap-1 ml-auto"
+                            className="px-3 py-1.5 rounded-xl bg-emerald-500/10 hover:bg-emerald-500 text-emerald-400 hover:text-black font-bold text-xs border border-emerald-500/30 transition-all flex items-center gap-1"
                           >
                             <DollarSign className="w-3.5 h-3.5" />
                             <span>Cobrar</span>
