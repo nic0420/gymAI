@@ -30,7 +30,7 @@ async function main() {
       taxId: "20-40000000-9",
       phone: "+54 9 342 555-0100",
       currency: "ARS",
-      isActive: 1,
+      isActive: true,
       settings: JSON.stringify({
         isMasterOrg: true,
         plan: "MASTER_GLOBAL_CEO",
@@ -45,7 +45,7 @@ async function main() {
       tenantId: masterTenantId,
       name: "Sede Matriz",
       address: "Santa Fe, Argentina",
-      isActive: 1,
+      isActive: true,
       createdAt: now,
       updatedAt: now,
     });
@@ -106,7 +106,7 @@ async function main() {
       phone: "+54 9 342 444-9988",
       address: "Av. Libertad 1250, Santa Fe",
       currency: "ARS",
-      isActive: 1,
+      isActive: true,
       settings: JSON.stringify({
         plan: "ENTERPRISE_VIP",
         status: "ACTIVE_TRIAL_VIP",
@@ -134,11 +134,12 @@ async function main() {
       name: "Sede Central",
       address: "Av. Libertad 1250",
       phone: "+54 9 342 444-9988",
-      isActive: 1,
+      isActive: true,
       createdAt: now,
       updatedAt: now,
     });
   }
+
 
   // Crear o actualizar usuario Dueño Gimnasio Libertad
   const gymPasswordHash = await hashPassword("Libertad12345");
