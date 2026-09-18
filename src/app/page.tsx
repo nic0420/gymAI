@@ -39,6 +39,7 @@ import { BusinessDashboard } from "@/components/analytics/BusinessDashboard";
 import { TouchKioskTerminal } from "@/components/kiosk/TouchKioskTerminal";
 import { GuidedTourModal } from "@/components/onboarding/GuidedTourModal";
 import { PublicLandingPage } from "@/components/landing/PublicLandingPage";
+import { LoginModal } from "@/components/auth/LoginModal";
 import { ToastProvider, useToast } from "@/components/ui/ToastProvider";
 
 export default function HomePage() {
@@ -58,30 +59,71 @@ function HomeContent() {
 
   const [demoTenantId, setDemoTenantId] = useState("demo-tenant-id");
   const [demoBranchId, setDemoBranchId] = useState("demo-branch-id");
-  const [selectedBranchName, setSelectedBranchName] = useState("Sede Belgrano (Principal)");
+  const [selectedBranchName, setSelectedBranchName] = useState("Sede Central");
   const [isKioskOpen, setIsKioskOpen] = useState(false);
   const [isTourOpen, setIsTourOpen] = useState(false);
+  const [isLoginOpen, setIsLoginOpen] = useState(false);
   const [selectedTour, setSelectedTour] = useState("receptionist");
+
+  // Usuario y Tenant Activo
+  const [currentUser, setCurrentUser] = useState({
+    name: "Nicolas Ojeda",
+    role: "SUPERADMIN",
+    email: "ojedanicolas1b@gmail.com",
+    initials: "NO",
+    tenantName: "Litoral.dev",
+    plan: "MASTER_GLOBAL_CEO",
+  });
+
+  const handleLoginSuccess = (user: any, tenant: any) => {
+    setCurrentUser({
+      name: `${user.firstName} ${user.lastName}`,
+      role: user.role,
+      email: user.email,
+      initials: `${user.firstName?.[0] || ""}${user.lastName?.[0] || ""}`.toUpperCase(),
+      tenantName: tenant.name,
+      plan: tenant.settings?.plan || "ENTERPRISE_VIP",
+    });
+    setDemoTenantId(tenant.id);
+    setSelectedBranchName("Sede Central");
+    setViewMode("app");
+    success(`¡Bienvenido ${user.firstName}! Has ingresado a ${tenant.name}`);
+  };
 
   // If in Landing Mode, render the high-conversion B2B showcase
   if (viewMode === "landing") {
     return (
-      <PublicLandingPage
-        onEnterApp={(tab) => {
-          if (tab) setActiveTab(tab as any);
-          setViewMode("app");
-        }}
-        onLaunchKiosk={() => setIsKioskOpen(true)}
-        onLaunchTour={(tourId) => {
-          setSelectedTour(tourId);
-          setIsTourOpen(true);
-        }}
-      />
+      <>
+        <LoginModal
+          isOpen={isLoginOpen}
+          onClose={() => setIsLoginOpen(false)}
+          onLoginSuccess={handleLoginSuccess}
+        />
+        <PublicLandingPage
+          onEnterApp={(tab) => {
+            if (tab) setActiveTab(tab as any);
+            setViewMode("app");
+          }}
+          onLaunchKiosk={() => setIsKioskOpen(true)}
+          onLaunchTour={(tourId) => {
+            setSelectedTour(tourId);
+            setIsTourOpen(true);
+          }}
+          onOpenLogin={() => setIsLoginOpen(true)}
+        />
+      </>
     );
   }
 
   return (
     <main className="min-h-screen bg-zinc-950 text-zinc-100 flex flex-col selection:bg-blue-500 selection:text-white">
+      {/* Login Modal */}
+      <LoginModal
+        isOpen={isLoginOpen}
+        onClose={() => setIsLoginOpen(false)}
+        onLoginSuccess={handleLoginSuccess}
+      />
+
       {/* Touch Kiosk Overlay Mode */}
       {isKioskOpen && <TouchKioskTerminal onClose={() => setIsKioskOpen(false)} />}
 
@@ -109,7 +151,7 @@ function HomeContent() {
                 <span className="text-sm font-black tracking-tight text-white flex items-center gap-1.5">
                   GymAI <span className="text-[10px] font-mono font-bold text-blue-400 bg-blue-500/10 px-1.5 py-0.5 rounded border border-blue-500/20">ENTERPRISE</span>
                 </span>
-                <p className="text-[10px] text-zinc-400">Multi-Tenant Platform</p>
+                <p className="text-[10px] text-zinc-400">{currentUser.tenantName}</p>
               </div>
             </button>
 
@@ -122,7 +164,7 @@ function HomeContent() {
                 onChange={(e) => setSelectedBranchName(e.target.value)}
                 className="bg-transparent text-zinc-200 text-xs font-semibold focus:outline-none cursor-pointer pr-2"
               >
-                <option value="Sede Belgrano (Principal)" className="bg-zinc-900 text-zinc-200">Sede Belgrano (Principal)</option>
+                <option value="Sede Central" className="bg-zinc-900 text-zinc-200">Sede Central ({currentUser.tenantName})</option>
                 <option value="Sede Palermo Soho" className="bg-zinc-900 text-zinc-200">Sede Palermo Soho</option>
                 <option value="Sede Recoleta VIP" className="bg-zinc-900 text-zinc-200">Sede Recoleta VIP</option>
               </select>
@@ -131,13 +173,23 @@ function HomeContent() {
 
           {/* Quick Action Badges & Controls */}
           <div className="flex items-center gap-2.5 text-xs font-medium">
+            {/* Login / Cambiar Cuenta */}
+            <button
+              onClick={() => setIsLoginOpen(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-zinc-300 hover:text-white border border-zinc-800/80 transition-all text-xs font-semibold"
+              title="Cambiar de cuenta o iniciar sesión"
+            >
+              <KeyRound className="w-3.5 h-3.5 text-blue-400" />
+              <span className="hidden md:inline">Cambiar Cuenta</span>
+            </button>
+
             {/* View Switcher: Landing */}
             <button
               onClick={() => setViewMode("landing")}
               className="hidden lg:flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-zinc-900/60 hover:bg-zinc-900 text-zinc-400 hover:text-zinc-200 border border-zinc-800/80 transition-all text-xs font-semibold"
             >
               <Globe className="w-3.5 h-3.5 text-blue-400" />
-              <span>Ver Landing B2B</span>
+              <span>Landing B2B</span>
             </button>
 
             {/* Launch Guided Tour */}
@@ -174,16 +226,17 @@ function HomeContent() {
             {/* User Profile Avatar */}
             <div className="flex items-center gap-2 pl-2 border-l border-zinc-800">
               <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-500 flex items-center justify-center font-bold text-white text-xs shadow-inner">
-                AD
+                {currentUser.initials}
               </div>
               <div className="hidden xl:block text-left text-[11px] leading-tight">
-                <span className="font-bold text-zinc-200 block">Admin Gerencial</span>
-                <span className="text-zinc-500">SuperAdmin</span>
+                <span className="font-bold text-zinc-200 block truncate max-w-[120px]">{currentUser.name}</span>
+                <span className="text-zinc-500 text-[10px]">{currentUser.role}</span>
               </div>
             </div>
           </div>
         </div>
       </header>
+
 
       {/* Navigation Sub-Header (Tabs) */}
       <section className="border-b border-zinc-800/80 bg-zinc-950/60 pt-4 pb-3 px-4 sm:px-6 sticky top-16 z-30 backdrop-blur-md">

@@ -24,21 +24,34 @@ interface PublicLandingProps {
   onEnterApp: (tab?: string) => void;
   onLaunchKiosk: () => void;
   onLaunchTour: (tourId: string) => void;
+  onOpenLogin?: () => void;
 }
 
 export function PublicLandingPage({
   onEnterApp,
   onLaunchKiosk,
   onLaunchTour,
+  onOpenLogin,
 }: PublicLandingProps) {
   const [activeTabDemo, setActiveTabDemo] = useState<"pass" | "warn" | "deny">("pass");
 
   return (
     <div className="min-h-screen bg-zinc-950 text-zinc-100 flex flex-col selection:bg-blue-500 selection:text-white">
       {/* Top Banner / Announcement */}
-      <div className="border-b border-zinc-800/80 bg-zinc-900/40 px-4 py-2 text-center text-xs text-zinc-400">
-        <span className="font-semibold text-blue-400">GymAI v1.0 Enterprise</span> — Infraestructura distribuida para cadenas de gimnasios con soporte Offline-First y validación &lt;2ms.
+      <div className="border-b border-zinc-800/80 bg-zinc-900/40 px-4 py-2 flex items-center justify-between text-xs text-zinc-400 max-w-7xl mx-auto w-full">
+        <div>
+          <span className="font-semibold text-blue-400">GymAI v1.0 Enterprise</span> — Infraestructura distribuida para cadenas de gimnasios con soporte Offline-First.
+        </div>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={onOpenLogin}
+            className="px-3 py-1 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-semibold transition-all shadow-sm"
+          >
+            Iniciar Sesión / Acceso
+          </button>
+        </div>
       </div>
+
 
       {/* Hero Section */}
       <section className="relative overflow-hidden pt-20 pb-24 border-b border-zinc-900">
