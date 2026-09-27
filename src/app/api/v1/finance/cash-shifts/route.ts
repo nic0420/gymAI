@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
+import { requireAuth, assertSameTenant } from "@/lib/auth/guard";
+import { ATOMIC_PERMISSIONS, hasPermission } from "@/lib/auth/rbac";
 import { OpenCashShiftSchema } from "@/lib/validations/finance";
 import { openCashShift } from "@/lib/finance/cash-register-service";
 import { db } from "@/db";
@@ -7,11 +9,16 @@ import { eq, and } from "drizzle-orm";
 
 export async function GET(req: NextRequest) {
   try {
+    const auth = await requireAuth(req, ATOMIC_PERMISSIONS.CASH_REGISTER_OPERATE);
+    if (!auth.ok) return auth.response;
+    const { ctx } = auth;
     const { searchParams } = new URL(req.url);
-    const tenantId = searchParams.get("tenantId");
+    const mismatch = assertSameTenant(ctx, searchParams.get("tenantId"));
+    if (mismatch) return mismatch;
+    const tenantId = ctx.tenantId;
     const branchId = searchParams.get("branchId");
 
-    if (!tenantId || !branchId) {
+    if (!branchId) {
       return NextResponse.json(
         { error: "MISSING_PARAMS", message: "tenantId y branchId son requeridos" },
         { status: 400 }
@@ -50,17 +57,28 @@ export async function GET(req: NextRequest) {
 
     const currentCalculatedCash = activeShift.initialCash + currentCashIncomes - currentCashExpenses;
 
+    // ARQUEO CIEGO: el saldo teórico y los totales sólo se exponen a quien tiene permiso de
+    // reportes financieros (dueño/SuperAdmin). Antes se mostraban al recepcionista, que así
+    // conocía de antemano cuánto "debía" declarar, anulando el control.
+    const canSeeTotals = hasPermission(ctx.role, ATOMIC_PERMISSIONS.FINANCIAL_REPORTS_READ, ctx.permissions);
+
     return NextResponse.json({
       success: true,
       data: {
-        shift: activeShift,
-        movements,
-        summary: {
-          initialCash: activeShift.initialCash,
-          totalIncomes: currentCashIncomes,
-          totalExpenses: currentCashExpenses,
-          currentCalculatedCash,
-        },
+        shift: canSeeTotals
+          ? activeShift
+          : { id: activeShift.id, branchId: activeShift.branchId, status: activeShift.status, openedAt: activeShift.openedAt },
+        movements: canSeeTotals ? movements : movements.filter((m) => m.type === "EXPENSE"),
+        movementsCount: movements.length,
+        summary: canSeeTotals
+          ? {
+              initialCash: activeShift.initialCash,
+              totalIncomes: currentCashIncomes,
+              totalExpenses: currentCashExpenses,
+              currentCalculatedCash,
+            }
+          : null,
+        blind: !canSeeTotals,
       },
     });
   } catch (error: any) {
@@ -74,7 +92,14 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
+    const auth = await requireAuth(req, ATOMIC_PERMISSIONS.CASH_REGISTER_OPERATE);
+    if (!auth.ok) return auth.response;
+    const { ctx } = auth;
     const body = await req.json();
+    const mismatch = assertSameTenant(ctx, body?.tenantId);
+    if (mismatch) return mismatch;
+    body.tenantId = ctx.tenantId;
+    body.openedByUserId = ctx.userId;
     const validated = OpenCashShiftSchema.safeParse(body);
 
     if (!validated.success) {
@@ -104,6 +129,12 @@ export async function POST(req: NextRequest) {
       return NextResponse.json(
         { error: "CONFLICT", message: "Ya existe un turno de caja abierto en esta sucursal" },
         { status: 409 }
+      );
+    }
+    if (error.message === "BRANCH_NOT_FOUND") {
+      return NextResponse.json(
+        { error: "INVALID_BRANCH", message: "La sede no pertenece a tu gimnasio" },
+        { status: 400 }
       );
     }
     return NextResponse.json(

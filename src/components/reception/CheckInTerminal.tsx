@@ -1,5 +1,6 @@
 "use client";
 
+import { apiFetch } from "@/lib/api-client";
 import React, { useState, useEffect, useRef } from "react";
 import {
   CheckCircle2,
@@ -53,11 +54,20 @@ export function CheckInTerminal({ tenantId, branchId }: CheckInTerminalProps) {
 
   const processCheckIn = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
-    if (!dni || dni.length < 5) return;
+    if (!dni || dni.length < 5 || loading) return;
+    if (!branchId) {
+      setLastResult({
+        accessStatus: "DENIED_RED",
+        message: "No hay una sede seleccionada. Configurá una sede para registrar ingresos.",
+        checkInAt: new Date().toISOString(),
+        executionTimeMs: 0,
+      });
+      return;
+    }
 
     setLoading(true);
     try {
-      const res = await fetch("/api/v1/attendance/check-in", {
+      const res = await apiFetch("/api/v1/attendance/check-in", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -77,18 +87,22 @@ export function CheckInTerminal({ tenantId, branchId }: CheckInTerminalProps) {
       };
 
       setLastResult(result);
+      setIsOffline(false);
       setRecentAttendances((prev) => [result, ...prev.slice(0, 9)]);
       setDni("");
     } catch (err) {
-      // Fallback de contingencia
+      // FIX: antes, ante una caída de red se devolvía AMARILLO ("paso autorizado") para
+      // CUALQUIER DNI, incluso inexistentes o deudores. Ahora no se autoriza a ciegas:
+      // se pide validación manual y se conserva el DNI para reintentar.
       const fallbackResult: CheckInResult = {
-        accessStatus: "WARNING_YELLOW",
-        message: "Operando en modo de contingencia local",
-        warningReason: "Fallo de conexión al servidor central",
+        accessStatus: "DENIED_RED",
+        message: "Sin conexión con el servidor: validar el acceso manualmente y reintentar",
+        denialReason: "Fallo de conexión al servidor central",
         checkInAt: new Date().toISOString(),
-        executionTimeMs: 1,
+        executionTimeMs: 0,
       };
       setLastResult(fallbackResult);
+      setIsOffline(true);
     } finally {
       setLoading(false);
     }
@@ -301,7 +315,12 @@ export function CheckInTerminal({ tenantId, branchId }: CheckInTerminalProps) {
                   <a
                     href={generateWhatsAppLink({
                       memberName: lastResult.user.firstName,
-                      type: lastResult.accessStatus === "DENIED_RED" ? "DEBT_REMINDER" : "DUE_SOON",
+                      // FIX: un rechazo por apto médico enviaba un "recordatorio de deuda"
+                      type: /apto/i.test(`${lastResult.denialReason || ""} ${lastResult.warningReason || ""}`)
+                        ? "MEDICAL_PENDING"
+                        : lastResult.accessStatus === "DENIED_RED"
+                        ? "DEBT_REMINDER"
+                        : "DUE_SOON",
                       dueDate: lastResult.subscription?.endDate,
                       gymName: "GymAI",
                     })}

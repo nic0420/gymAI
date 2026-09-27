@@ -1,6 +1,10 @@
 import { db } from "@/db";
-import { attendances, users, subscriptions, invoices, setLogs, workoutLogs, exercises } from "@/db/schema";
-import { eq, and, sql, desc, gte } from "drizzle-orm";
+import { attendances, users, subscriptions, invoices, setLogs, workoutLogs, paymentTransactions } from "@/db/schema";
+import { eq, and, gte, ne } from "drizzle-orm";
+import { getLocalDayAndHour } from "@/lib/time/dates";
+
+const HEATMAP_WINDOW_DAYS = 90;
+const MONTH_WINDOW_DAYS = 30;
 
 export interface PeakHoursMatrix {
   dayOfWeek: number; // 0 = Domingo, 1 = Lunes, ..., 6 = Sábado
@@ -26,8 +30,15 @@ const DAY_NAMES = ["Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Vierne
  * Analiza la distribución de asistencias en una matriz de 7 días x 24 horas.
  */
 export async function generatePeakHoursHeatmap(tenantId: string): Promise<PeakHoursMatrix[]> {
+  // FIX: sólo ingresos efectivos (los rechazos en ROJO no son "gente entrenando")
+  // y ventana acotada (antes cargaba TODO el historial en memoria en cada request)
+  const since = new Date(Date.now() - HEATMAP_WINDOW_DAYS * 86_400_000).toISOString();
   const allAttendances = await db.query.attendances.findMany({
-    where: eq(attendances.tenantId, tenantId),
+    where: and(
+      eq(attendances.tenantId, tenantId),
+      ne(attendances.accessStatus, "DENIED_RED"),
+      gte(attendances.checkInAt, since)
+    ),
     columns: { checkInAt: true },
   });
 
@@ -39,9 +50,9 @@ export async function generatePeakHoursHeatmap(tenantId: string): Promise<PeakHo
   }));
 
   for (const att of allAttendances) {
-    const date = new Date(att.checkInAt);
-    const day = date.getDay(); // 0 a 6
-    const hour = date.getHours(); // 0 a 23
+    // FIX: día/hora en la zona horaria del gimnasio (antes: la del servidor; en Vercel = UTC,
+    // el pico de las 19 hs aparecía a las 22 hs)
+    const { dayOfWeek: day, hour } = getLocalDayAndHour(new Date(att.checkInAt));
     if (matrix[day] && matrix[day].hourlyCounts[hour] !== undefined) {
       matrix[day].hourlyCounts[hour]++;
     }
@@ -54,15 +65,29 @@ export async function generatePeakHoursHeatmap(tenantId: string): Promise<PeakHo
  * Genera el reporte ejecutivo de KPIs del Gimnasio
  */
 export async function getExecutiveBusinessDashboard(tenantId: string): Promise<BusinessKPIs> {
-  const [allUsers, allSubscriptions, allInvoices, heatmap] = await Promise.all([
+  const monthStartIso = new Date(Date.now() - MONTH_WINDOW_DAYS * 86_400_000).toISOString();
+
+  const [allUsers, monthPayments, monthAttendances, heatmap] = await Promise.all([
     db.query.users.findMany({
       where: and(eq(users.tenantId, tenantId), eq(users.role, "SOCIO")),
+      columns: { status: true },
     }),
-    db.query.subscriptions.findMany({
-      where: eq(subscriptions.tenantId, tenantId),
+    // Cobros aprobados de los últimos 30 días
+    db.query.paymentTransactions.findMany({
+      where: and(
+        eq(paymentTransactions.tenantId, tenantId),
+        eq(paymentTransactions.status, "APPROVED"),
+        gte(paymentTransactions.createdAt, monthStartIso)
+      ),
+      columns: { amount: true },
     }),
-    db.query.invoices.findMany({
-      where: and(eq(invoices.tenantId, tenantId), eq(invoices.status, "PAID")),
+    db.query.attendances.findMany({
+      where: and(
+        eq(attendances.tenantId, tenantId),
+        ne(attendances.accessStatus, "DENIED_RED"),
+        gte(attendances.checkInAt, monthStartIso)
+      ),
+      columns: { id: true },
     }),
     generatePeakHoursHeatmap(tenantId),
   ]);
@@ -77,11 +102,13 @@ export async function getExecutiveBusinessDashboard(tenantId: string): Promise<B
     else inactiveMembers++;
   }
 
-  // MRR: Sumatoria de facturas cobradas en los últimos 30 días
+  // MRR: Sumatoria de cobros aprobados en los últimos 30 días.
+  // FIX: antes sumaba TODAS las facturas pagas de la historia (el "MRR" sólo crecía).
   let monthlyRecurringRevenue = 0;
-  for (const inv of allInvoices) {
-    monthlyRecurringRevenue += inv.paidAmount;
+  for (const p of monthPayments) {
+    monthlyRecurringRevenue += p.amount;
   }
+  monthlyRecurringRevenue = Math.round(monthlyRecurringRevenue * 100) / 100;
 
   // Encontrar hora pico máxima
   let maxCount = -1;
@@ -103,11 +130,8 @@ export async function getExecutiveBusinessDashboard(tenantId: string): Promise<B
       ? `${peakDay} a las ${peakHour}:00 hs (${maxCount} accesos)`
       : "Sin datos suficientes";
 
-  // Total de asistencias del mes
-  const totalAttendances = heatmap.reduce(
-    (acc, d) => acc + d.hourlyCounts.reduce((hAcc, c) => hAcc + c, 0),
-    0
-  );
+  // Total de asistencias de los últimos 30 días (antes: todas las de la historia)
+  const totalAttendances = monthAttendances.length;
 
   return {
     totalMembers: allUsers.length,

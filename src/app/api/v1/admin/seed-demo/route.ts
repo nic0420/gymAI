@@ -19,29 +19,39 @@ import { hashPassword } from "@/lib/security/hash";
 import { generateUUIDv7 } from "@/lib/security/uuid";
 import { calculateOneRepMax } from "@/lib/workouts/epley";
 import { eq, and } from "drizzle-orm";
+import { requireAuth } from "@/lib/auth/guard";
+import { getLocalDateString, addDaysToDateString } from "@/lib/time/dates";
 
 export async function POST(req: NextRequest) {
   try {
-    const body = await req.json();
-    const { tenantId, branchId } = body as { tenantId: string; branchId?: string };
-
-    if (!tenantId) {
+    // FIX: antes era público. Cualquiera podía inyectar 12 socios falsos, facturas y
+    // asistencias en el gimnasio de cualquier cliente. Ahora exige SUPERADMIN y en
+    // producción debe habilitarse explícitamente con ALLOW_DEMO_SEED=true.
+    if (process.env.NODE_ENV === "production" && process.env.ALLOW_DEMO_SEED !== "true") {
       return NextResponse.json(
-        { success: false, error: "tenantId es obligatorio" },
-        { status: 400 }
+        { success: false, error: "La carga de datos demo está deshabilitada en producción" },
+        { status: 403 }
       );
     }
+    const auth = await requireAuth(req);
+    if (!auth.ok) return auth.response;
+    if (auth.ctx.role !== "SUPERADMIN") {
+      return NextResponse.json(
+        { success: false, error: "Sólo un administrador puede cargar datos demo" },
+        { status: 403 }
+      );
+    }
+    const tenantId = auth.ctx.tenantId;
+    const body = await req.json().catch(() => ({}));
+    const requestedBranchId = (body as { branchId?: string })?.branchId;
 
     const now = new Date();
     const nowIso = now.toISOString();
-    const todayStr = nowIso.split("T")[0];
+    const todayStr = getLocalDateString(now);
     const defaultPasswordHash = await hashPassword("Demo1234!");
 
-    // Helper para fechas
-    const helperAddDays = (days: number): string => {
-      const d = new Date(now.getTime() + days * 24 * 60 * 60 * 1000);
-      return d.toISOString().split("T")[0];
-    };
+    // Helper para fechas (calendario local del gimnasio)
+    const helperAddDays = (days: number): string => addDaysToDateString(todayStr, days);
 
     // 1. Crear Planes de Membresía
     const plansData = [
@@ -53,8 +63,9 @@ export async function POST(req: NextRequest) {
 
     const createdPlanIds: string[] = [];
     for (const p of plansData) {
+      // FIX: la búsqueda no filtraba por tenant -> reutilizaba planes de OTRO gimnasio
       const existingPlan = await db.query.membershipPlans.findFirst({
-        where: eq(membershipPlans.name, p.name),
+        where: and(eq(membershipPlans.tenantId, tenantId), eq(membershipPlans.name, p.name)),
       });
       if (existingPlan) {
         createdPlanIds.push(existingPlan.id);
@@ -89,7 +100,7 @@ export async function POST(req: NextRequest) {
     const createdExerciseIds: string[] = [];
     for (const ex of exercisesData) {
       const existingEx = await db.query.exercises.findFirst({
-        where: eq(exercises.name, ex.name),
+        where: and(eq(exercises.tenantId, tenantId), eq(exercises.name, ex.name)),
       });
       if (existingEx) {
         createdExerciseIds.push(existingEx.id);
@@ -124,7 +135,30 @@ export async function POST(req: NextRequest) {
     ];
 
     let createdCount = 0;
-    const effectiveBranchId = branchId || generateUUIDv7();
+    // FIX: antes, sin branchId se inventaba un UUID inexistente y las asistencias
+    // fallaban por FK. Ahora se usa una sede real del tenant (o se crea una).
+    let effectiveBranchId: string | undefined;
+    if (requestedBranchId) {
+      const b = await db.query.branches.findFirst({
+        where: and(eq(branches.id, requestedBranchId), eq(branches.tenantId, tenantId)),
+      });
+      effectiveBranchId = b?.id;
+    }
+    if (!effectiveBranchId) {
+      const firstBranch = await db.query.branches.findFirst({ where: eq(branches.tenantId, tenantId) });
+      effectiveBranchId = firstBranch?.id;
+    }
+    if (!effectiveBranchId) {
+      effectiveBranchId = generateUUIDv7();
+      await db.insert(branches).values({
+        id: effectiveBranchId,
+        tenantId,
+        name: "Sede Central",
+        address: "Sin dirección",
+        createdAt: nowIso,
+        updatedAt: nowIso,
+      });
+    }
 
     for (let i = 0; i < demoMembers.length; i++) {
       const dm = demoMembers[i];
@@ -209,8 +243,9 @@ export async function POST(req: NextRequest) {
       if (userId) {
         for (let dayOffset = 0; dayOffset < 7; dayOffset++) {
           const peakHour = 18 + (i % 4); // Entre las 18 y 21 hs (pico realista)
+          // Hora pico en horario de Argentina (UTC-3) expresada en UTC
           const checkInDate = new Date(now.getTime() - dayOffset * 24 * 60 * 60 * 1000);
-          checkInDate.setHours(peakHour, Math.floor(Math.random() * 59), 0, 0);
+          checkInDate.setUTCHours(peakHour + 3, Math.floor(Math.random() * 59), 0, 0);
 
           await db.insert(attendances).values({
             id: generateUUIDv7(),
@@ -232,7 +267,7 @@ export async function POST(req: NextRequest) {
   } catch (error: any) {
     console.error("Error en seed-demo:", error);
     return NextResponse.json(
-      { success: false, error: error.message || "Error al inicializar datos demo" },
+      { success: false, error: "Error al inicializar datos demo" },
       { status: 500 }
     );
   }

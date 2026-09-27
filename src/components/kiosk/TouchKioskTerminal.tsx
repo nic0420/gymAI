@@ -2,6 +2,8 @@
 
 import React, { useState, useEffect, useRef } from "react";
 import { soundEffects } from "@/lib/kiosk/sound-effects";
+import { apiFetch } from "@/lib/api-client";
+import type { CheckInResult } from "@/lib/attendance/checkin-engine";
 
 interface CheckInEvaluation {
   status: "GREEN" | "YELLOW" | "RED";
@@ -20,10 +22,32 @@ interface CheckInEvaluation {
 }
 
 interface TouchKioskTerminalProps {
+  tenantId: string;
+  branchId: string;
   onClose?: () => void;
 }
 
-export function TouchKioskTerminal({ onClose }: TouchKioskTerminalProps) {
+/** Traduce la respuesta real del motor de check-in al formato visual del kiosco. */
+function mapCheckInToKiosk(result: CheckInResult): CheckInEvaluation {
+  const status = result.accessStatus === "GRANTED_GREEN" ? "GREEN" : result.accessStatus === "WARNING_YELLOW" ? "YELLOW" : "RED";
+  return {
+    status,
+    reason: result.message,
+    member: result.user
+      ? {
+          id: result.user.id,
+          fullName: `${result.user.firstName} ${result.user.lastName}`,
+          dni: result.user.dni,
+          planName: result.subscription ? `Vence ${result.subscription.endDate}` : "Sin plan",
+          membershipExpiresAt: result.subscription?.endDate || "",
+          medicalExpiresAt: result.medicalClearance?.expiryDate || "",
+        }
+      : undefined,
+    metrics: { evaluationTimeMs: result.executionTimeMs },
+  };
+}
+
+export function TouchKioskTerminal({ tenantId, branchId, onClose }: TouchKioskTerminalProps) {
   const [inputDni, setInputDni] = useState("");
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<CheckInEvaluation | null>(null);
@@ -85,16 +109,28 @@ export function TouchKioskTerminal({ onClose }: TouchKioskTerminalProps) {
     setLoading(true);
 
     try {
-      const res = await fetch("/api/v1/attendance/check-in", {
+      // FIX CRÍTICO: antes se enviaba sólo el DNI (sin tenantId/branchId -> 400) y se leía
+      // `data.evaluation`, un campo que la API nunca devolvió. El kiosco SIEMPRE mostraba
+      // "Error de red" en rojo, para cualquier socio.
+      const res = await apiFetch("/api/v1/attendance/check-in", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          tenantId,
+          branchId,
           dni: inputDni.trim(),
+          accessMethod: "DNI_KEYPAD",
         }),
       });
 
       const data = await res.json();
-      const evalResult: CheckInEvaluation = data.evaluation;
+      const evalResult: CheckInEvaluation = data?.data
+        ? mapCheckInToKiosk(data.data as CheckInResult)
+        : {
+            status: "RED",
+            reason: data?.message || "No se pudo validar el acceso. Comuníquese con recepción.",
+            metrics: { evaluationTimeMs: 0 },
+          };
       setResult(evalResult);
 
       if (evalResult.status === "GREEN") {
@@ -210,7 +246,7 @@ export function TouchKioskTerminal({ onClose }: TouchKioskTerminalProps) {
               </p>
 
               <div className="mt-6 flex items-center justify-between text-xs text-slate-400">
-                <span>Latencia: {result.metrics?.evaluationTimeMs || 1.8} ms</span>
+                <span>Latencia: {result.metrics?.evaluationTimeMs ?? 0} ms</span>
                 <span className="font-semibold text-emerald-400">
                   Reiniciando en {countdown}s...
                 </span>

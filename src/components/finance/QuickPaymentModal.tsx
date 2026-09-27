@@ -1,5 +1,6 @@
 "use client";
 
+import { apiFetch } from "@/lib/api-client";
 import React, { useState } from "react";
 import { X, CreditCard, Banknote, QrCode, CheckCircle2, AlertCircle, Plus, Trash2 } from "lucide-react";
 
@@ -68,8 +69,17 @@ export function QuickPaymentModal({
 
   const handleProcessPayment = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (totalSplits <= 0) {
-      setErrorMsg("El monto a pagar debe ser mayor a 0");
+    if (totalSplits <= 0 || splits.some((sp) => !(Number(sp.amount) > 0))) {
+      setErrorMsg("Cada pago debe tener un monto mayor a 0");
+      return;
+    }
+    // FIX: antes se podía cobrar más que el saldo (la factura quedaba con paidAmount > total)
+    if (Math.round(totalSplits * 100) > Math.round(invoice.remainingAmount * 100)) {
+      setErrorMsg(`El total ingresado supera el saldo pendiente ($${invoice.remainingAmount.toLocaleString()})`);
+      return;
+    }
+    if (splits.some((sp) => sp.paymentMethod === "CASH") && !cashShiftId) {
+      setErrorMsg("Para cobrar en efectivo primero abrí la caja del día en esta sede");
       return;
     }
 
@@ -77,7 +87,7 @@ export function QuickPaymentModal({
     setErrorMsg(null);
 
     try {
-      const res = await fetch("/api/v1/finance/payments", {
+      const res = await apiFetch("/api/v1/finance/payments", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

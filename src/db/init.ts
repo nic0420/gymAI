@@ -302,4 +302,41 @@ export function initializeLocalDatabase(sqlite: Database.Database): void {
       processed_at TEXT
     );
   `);
+
+  // ------------------------------------------------------------------
+  // Índices y restricciones de unicidad.
+  // FIX: el esquema Drizzle declaraba UNIQUE(tenant_id, dni), UNIQUE(tenant_id, email) e
+  // índices de búsqueda, pero el DDL real no creaba NINGUNO: se podían duplicar socios
+  // (doble click en "Registrar", importaciones concurrentes) y cada check-in hacía un
+  // full scan de la tabla users. Se crean uno por uno para que, si una base existente ya
+  // tiene duplicados, falle sólo ese índice (con aviso) y no el arranque de la app.
+  // ------------------------------------------------------------------
+  const indexStatements = [
+    "CREATE UNIQUE INDEX IF NOT EXISTS idx_users_tenant_dni ON users(tenant_id, dni)",
+    "CREATE UNIQUE INDEX IF NOT EXISTS idx_users_tenant_email ON users(tenant_id, email)",
+    "CREATE INDEX IF NOT EXISTS idx_users_tenant_status ON users(tenant_id, status)",
+    "CREATE INDEX IF NOT EXISTS idx_users_dni_blind ON users(tenant_id, dni_blind_index)",
+    "CREATE INDEX IF NOT EXISTS idx_branches_tenant ON branches(tenant_id)",
+    "CREATE INDEX IF NOT EXISTS idx_medical_user ON medical_records(tenant_id, user_id)",
+    "CREATE INDEX IF NOT EXISTS idx_subscriptions_user ON subscriptions(tenant_id, user_id, created_at)",
+    "CREATE INDEX IF NOT EXISTS idx_invoices_tenant ON invoices(tenant_id, status, created_at)",
+    "CREATE UNIQUE INDEX IF NOT EXISTS idx_invoices_tenant_number ON invoices(tenant_id, invoice_number)",
+    "CREATE INDEX IF NOT EXISTS idx_payments_tenant_date ON payment_transactions(tenant_id, created_at)",
+    "CREATE INDEX IF NOT EXISTS idx_cash_shifts_branch ON cash_shifts(tenant_id, branch_id, status)",
+    "CREATE INDEX IF NOT EXISTS idx_cash_movements_shift ON cash_movements(cash_shift_id)",
+    "CREATE INDEX IF NOT EXISTS idx_attendance_search ON attendances(tenant_id, user_id, check_in_at)",
+    "CREATE INDEX IF NOT EXISTS idx_attendance_stats ON attendances(tenant_id, check_in_at)",
+    "CREATE INDEX IF NOT EXISTS idx_routines_tenant ON routines(tenant_id, user_id)",
+    "CREATE INDEX IF NOT EXISTS idx_workout_logs_user ON workout_logs(user_id, started_at)",
+    "CREATE INDEX IF NOT EXISTS idx_set_logs_exercise ON set_logs(workout_log_id, exercise_id)",
+    "CREATE UNIQUE INDEX IF NOT EXISTS idx_webhook_idempotency ON webhook_events(gateway, external_event_id)",
+  ];
+
+  for (const stmt of indexStatements) {
+    try {
+      sqlite.exec(stmt);
+    } catch (err: any) {
+      console.warn(`[db:init] No se pudo crear índice (¿datos duplicados existentes?): ${stmt} -> ${err?.message}`);
+    }
+  }
 }

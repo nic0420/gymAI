@@ -1,3 +1,4 @@
+import "./setup-env";
 import { runSecurityTests } from "./security.test";
 import { runAuthRtrTests } from "./auth-rtr.test";
 import { runDatabaseErdTests } from "./database-erd.test";
@@ -12,6 +13,7 @@ import { runOneRepMaxTrackerTests } from "./one-rep-max-tracker.test";
 import { runBiAnalyticsTests } from "./bi-analytics.test";
 import { runKioskAndOnboardingTests } from "./kiosk-and-onboarding.test";
 import { runBoundaryAndStressTests } from "./boundary-and-qa-stress.test";
+import { runQaRegressionTests } from "./qa-regression.test";
 
 async function main() {
   console.log("==========================================================================");
@@ -35,13 +37,14 @@ async function main() {
     const s12 = await runBiAnalyticsTests();
     const s13 = await runKioskAndOnboardingTests();
     const s14 = await runBoundaryAndStressTests();
+    const s15 = await runQaRegressionTests();
 
     const elapsed = ((Date.now() - startTime) / 1000).toFixed(2);
-    const allPassed = s1 && s2 && s3 && s4 && s5 && s6 && s7 && s8 && s9 && s10 && s11 && s12 && s13 && s14;
+    const allPassed = s1 && s2 && s3 && s4 && s5 && s6 && s7 && s8 && s9 && s10 && s11 && s12 && s13 && s14 && s15;
 
     console.log("\n==========================================================================");
     if (allPassed) {
-      console.log(`🎉 TODAS LAS 14 SUITES DE PRUEBAS PASARON EXITOSAMENTE (${elapsed}s)`);
+      console.log(`🎉 TODAS LAS 15 SUITES DE PRUEBAS PASARON EXITOSAMENTE (${elapsed}s)`);
       console.log("Seguridad, ERD, RTR, RBAC, Semáforo, Offline Sync, Split Payments, Caja, Webhooks, Rutinas, 1RM Epley, Heatmaps BI, Modo Kiosco y Pruebas de Límites 100% OPERATIVOS.");
       console.log("==========================================================================");
       process.exit(0);

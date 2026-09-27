@@ -1,15 +1,23 @@
 import { NextRequest, NextResponse } from "next/server";
 import { LoginSchema } from "@/lib/validations/auth";
 import { db } from "@/db";
-import { tenants, users } from "@/db/schema";
-import { verifyPassword } from "@/lib/security/hash";
+import { tenants, users, branches } from "@/db/schema";
+import { verifyPassword, hashPassword } from "@/lib/security/hash";
+import { getClientIp } from "@/lib/security/client-ip";
 import { rateLimiter, RATE_LIMIT_CONFIGS } from "@/lib/security/rate-limiter";
 import { generateAccessToken, createSessionAndRefreshToken } from "@/lib/auth/tokens";
-import { eq, and, or } from "drizzle-orm";
+import { eq, and, or, sql } from "drizzle-orm";
+
+// Hash señuelo para igualar tiempos cuando el usuario no existe (evita enumeración por timing)
+let dummyHashPromise: Promise<string> | null = null;
+function getDummyHash() {
+  if (!dummyHashPromise) dummyHashPromise = hashPassword("timing-equalizer-not-a-real-password");
+  return dummyHashPromise;
+}
 
 export async function POST(req: NextRequest) {
   try {
-    const ip = req.ip || req.headers.get("x-forwarded-for") || "127.0.0.1";
+    const ip = getClientIp(req);
     const body = await req.json();
     const validated = LoginSchema.safeParse(body);
 
@@ -25,7 +33,8 @@ export async function POST(req: NextRequest) {
     }
 
     const { tenantSlug, identifier, password } = validated.data;
-    const rateLimitKey = `login:${ip}:${tenantSlug}:${identifier.toLowerCase()}`;
+    const normalizedIdentifier = identifier.trim().toLowerCase();
+    const rateLimitKey = `login:${ip}:${tenantSlug}:${normalizedIdentifier}`;
 
     // 1. Aplicar Sliding Window Rate Limiting (Máx 5 intentos / 15 min)
     const rateLimitStatus = await rateLimiter.check(
@@ -56,6 +65,7 @@ export async function POST(req: NextRequest) {
     });
 
     if (!tenant || !tenant.isActive) {
+      await verifyPassword(password, await getDummyHash());
       return NextResponse.json(
         {
           error: "INVALID_CREDENTIALS",
@@ -69,11 +79,12 @@ export async function POST(req: NextRequest) {
     const user = await db.query.users.findFirst({
       where: and(
         eq(users.tenantId, tenant.id),
-        or(eq(users.email, identifier), eq(users.dni, identifier))
+        or(sql`lower(${users.email}) = ${normalizedIdentifier}`, eq(users.dni, identifier.trim()))
       ),
     });
 
     if (!user || user.status === "INACTIVE" || user.status === "SUSPENDED") {
+      await verifyPassword(password, await getDummyHash());
       return NextResponse.json(
         {
           error: "INVALID_CREDENTIALS",
@@ -97,6 +108,16 @@ export async function POST(req: NextRequest) {
 
     // 5. Login Exitoso -> Resetear contador de Rate Limit
     rateLimiter.reset(rateLimitKey);
+
+    await db
+      .update(users)
+      .set({ lastLoginAt: new Date().toISOString() })
+      .where(eq(users.id, user.id));
+
+    const tenantBranches = await db.query.branches.findMany({
+      where: eq(branches.tenantId, tenant.id),
+      columns: { id: true, name: true },
+    });
 
     // 6. Crear Sesión y Emitir Tokens (Access Token + Refresh Token)
     const userAgent = req.headers.get("user-agent") || undefined;
@@ -136,6 +157,7 @@ export async function POST(req: NextRequest) {
             id: tenant.id,
             name: tenant.name,
             slug: tenant.slug,
+            branches: tenantBranches,
           },
         },
       },

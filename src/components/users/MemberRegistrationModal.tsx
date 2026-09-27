@@ -1,5 +1,6 @@
 "use client";
 
+import { apiFetch } from "@/lib/api-client";
 import React, { useState } from "react";
 import { X, UserPlus, ShieldAlert, HeartPulse, Check, UserCheck } from "lucide-react";
 
@@ -46,7 +47,7 @@ export function MemberRegistrationModal({
     setSuccessMsg(null);
 
     try {
-      const res = await fetch("/api/v1/users", {
+      const res = await apiFetch("/api/v1/users", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

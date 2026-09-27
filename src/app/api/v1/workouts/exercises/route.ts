@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
+import { requireAuth, assertSameTenant } from "@/lib/auth/guard";
+import { ATOMIC_PERMISSIONS } from "@/lib/auth/rbac";
 import { CreateExerciseSchema } from "@/lib/validations/workout";
 import { createExercise } from "@/lib/workouts/workout-service";
 import { db } from "@/db";
@@ -7,14 +9,16 @@ import { eq, or, isNull } from "drizzle-orm";
 
 export async function GET(req: NextRequest) {
   try {
+    const auth = await requireAuth(req, ATOMIC_PERMISSIONS.ROUTINES_READ);
+    if (!auth.ok) return auth.response;
+    const { ctx } = auth;
     const { searchParams } = new URL(req.url);
-    const tenantId = searchParams.get("tenantId");
+    const mismatch = assertSameTenant(ctx, searchParams.get("tenantId"));
+    if (mismatch) return mismatch;
     const muscleGroup = searchParams.get("muscleGroup");
 
-    let whereClause = undefined;
-    if (tenantId) {
-      whereClause = or(eq(exercises.tenantId, tenantId), isNull(exercises.tenantId));
-    }
+    // FIX: sin tenantId antes se devolvía la biblioteca privada de TODOS los gimnasios
+    const whereClause = or(eq(exercises.tenantId, ctx.tenantId), isNull(exercises.tenantId));
 
     const list = await db.query.exercises.findMany({
       where: whereClause,
@@ -41,7 +45,14 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
+    const auth = await requireAuth(req, ATOMIC_PERMISSIONS.ROUTINES_WRITE);
+    if (!auth.ok) return auth.response;
+    const { ctx } = auth;
     const body = await req.json();
+    const mismatch = assertSameTenant(ctx, body?.tenantId);
+    if (mismatch) return mismatch;
+    // Los ejercicios globales (tenantId null) sólo se crean vía seed/migración, no desde la API
+    body.tenantId = ctx.tenantId;
     const validated = CreateExerciseSchema.safeParse(body);
 
     if (!validated.success) {

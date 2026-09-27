@@ -21,6 +21,8 @@ export const CreateUserSchema = z.object({
 
   email: z
     .string({ required_error: "El correo electrónico es obligatorio" })
+    .trim()
+    .toLowerCase()
     .email("Ingresa un correo electrónico válido"),
 
   phone: z.string().optional(),

@@ -1,17 +1,35 @@
 import { NextRequest, NextResponse } from "next/server";
+import { requireAuth, assertSameTenant } from "@/lib/auth/guard";
+import { ATOMIC_PERMISSIONS } from "@/lib/auth/rbac";
 import { CreateBodyMeasurementSchema } from "@/lib/validations/workout";
 import { db } from "@/db";
 import { bodyMeasurements } from "@/db/schema";
 import { generateUUIDv7 } from "@/lib/security/uuid";
 import { eq, and, desc } from "drizzle-orm";
+import { users } from "@/db/schema";
 
 export async function GET(req: NextRequest) {
   try {
+    const auth = await requireAuth(req, ATOMIC_PERMISSIONS.ROUTINES_READ);
+    if (!auth.ok) return auth.response;
+    const { ctx } = auth;
     const { searchParams } = new URL(req.url);
-    const userId = searchParams.get("userId");
+    const userId = searchParams.get("userId") || (ctx.role === "SOCIO" ? ctx.userId : null);
 
     if (!userId) {
       return NextResponse.json({ error: "MISSING_USER", message: "userId es requerido" }, { status: 400 });
+    }
+
+    // Un SOCIO sólo puede ver/cargar sus propios datos; el staff, sólo socios de su gimnasio
+    if (ctx.role === "SOCIO" && userId !== ctx.userId) {
+      return NextResponse.json({ error: "FORBIDDEN", message: "Sólo puedes acceder a tus propios registros" }, { status: 403 });
+    }
+    const member = await db.query.users.findFirst({
+      where: and(eq(users.id, userId), eq(users.tenantId, ctx.tenantId)),
+      columns: { id: true },
+    });
+    if (!member) {
+      return NextResponse.json({ error: "NOT_FOUND", message: "Socio no encontrado" }, { status: 404 });
     }
 
     const measurements = await db.query.bodyMeasurements.findMany({
@@ -36,7 +54,13 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
+    const auth = await requireAuth(req, ATOMIC_PERMISSIONS.ROUTINES_READ);
+    if (!auth.ok) return auth.response;
+    const { ctx } = auth;
     const body = await req.json();
+    const mismatch = assertSameTenant(ctx, body?.tenantId);
+    if (mismatch) return mismatch;
+    body.tenantId = ctx.tenantId;
     const validated = CreateBodyMeasurementSchema.safeParse(body);
 
     if (!validated.success) {
@@ -48,6 +72,18 @@ export async function POST(req: NextRequest) {
         },
         { status: 400 }
       );
+    }
+
+    // Un SOCIO sólo puede ver/cargar sus propios datos; el staff, sólo socios de su gimnasio
+    if (ctx.role === "SOCIO" && validated.data.userId !== ctx.userId) {
+      return NextResponse.json({ error: "FORBIDDEN", message: "Sólo puedes acceder a tus propios registros" }, { status: 403 });
+    }
+    const member = await db.query.users.findFirst({
+      where: and(eq(users.id, validated.data.userId), eq(users.tenantId, ctx.tenantId)),
+      columns: { id: true },
+    });
+    if (!member) {
+      return NextResponse.json({ error: "NOT_FOUND", message: "Socio no encontrado" }, { status: 404 });
     }
 
     const measurementId = generateUUIDv7();

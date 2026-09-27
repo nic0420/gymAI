@@ -3,13 +3,18 @@ import { UpdateMedicalRecordSchema } from "@/lib/validations/user";
 import { db } from "@/db";
 import { medicalRecords } from "@/db/schema";
 import { encryptToString } from "@/lib/security/encryption";
-import { eq } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
+import { requireAuth } from "@/lib/auth/guard";
+import { ATOMIC_PERMISSIONS } from "@/lib/auth/rbac";
 
 export async function PUT(
   req: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
+    const auth = await requireAuth(req, ATOMIC_PERMISSIONS.MEDICAL_WRITE);
+    if (!auth.ok) return auth.response;
+    const { ctx } = auth;
     const userId = params.id;
     const body = await req.json();
 
@@ -46,7 +51,7 @@ export async function PUT(
 
     const now = new Date().toISOString();
 
-    await db
+    const result = await db
       .update(medicalRecords)
       .set({
         medicalClearanceStatus,
@@ -62,7 +67,16 @@ export async function PUT(
         encryptedAllergies,
         updatedAt: now,
       })
-      .where(eq(medicalRecords.userId, userId));
+      .where(and(eq(medicalRecords.userId, userId), eq(medicalRecords.tenantId, ctx.tenantId)))
+      .returning({ id: medicalRecords.id });
+
+    // FIX: antes respondía "éxito" aunque no existiera la ficha (0 filas actualizadas)
+    if (result.length === 0) {
+      return NextResponse.json(
+        { error: "NOT_FOUND", message: "No existe ficha médica para este socio en tu gimnasio" },
+        { status: 404 }
+      );
+    }
 
     return NextResponse.json({
       success: true,

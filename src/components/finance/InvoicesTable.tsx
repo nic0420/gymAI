@@ -1,5 +1,6 @@
 "use client";
 
+import { apiFetch } from "@/lib/api-client";
 import React, { useState, useEffect } from "react";
 import { FileText, DollarSign, Search, RefreshCw, CheckCircle2, Clock, Download, MessageCircle } from "lucide-react";
 import { QuickPaymentModal } from "./QuickPaymentModal";
@@ -8,18 +9,38 @@ import { generateWhatsAppLink } from "@/lib/whatsapp/whatsapp-helper";
 
 interface InvoicesTableProps {
   tenantId: string;
+  branchId?: string;
   cashShiftId?: string;
 }
 
-export function InvoicesTable({ tenantId, cashShiftId }: InvoicesTableProps) {
+export function InvoicesTable({ tenantId, branchId, cashShiftId }: InvoicesTableProps) {
   const [invoices, setInvoices] = useState<any[]>([]);
+  // FIX: antes nunca se pasaba la caja abierta al cobro, así que los pagos en efectivo
+  // NO ingresaban a la caja y el arqueo ciego siempre daba "sobrante". Ahora se busca la
+  // caja abierta de la sede al momento de cobrar.
+  const [activeShiftId, setActiveShiftId] = useState<string | undefined>(cashShiftId);
+
+  const openPayment = async (invoice: any) => {
+    let shiftId = cashShiftId;
+    if (!shiftId && branchId) {
+      try {
+        const res = await apiFetch(`/api/v1/finance/cash-shifts?branchId=${encodeURIComponent(branchId)}`);
+        const data = await res.json();
+        shiftId = data?.data?.shift?.id;
+      } catch {
+        shiftId = undefined;
+      }
+    }
+    setActiveShiftId(shiftId);
+    setSelectedInvoice(invoice);
+  };
   const [loading, setLoading] = useState(false);
   const [selectedInvoice, setSelectedInvoice] = useState<any | null>(null);
 
   const fetchInvoices = async () => {
     setLoading(true);
     try {
-      const res = await fetch(`/api/v1/finance/invoices?tenantId=${tenantId}`);
+      const res = await apiFetch(`/api/v1/finance/invoices?tenantId=${tenantId}`);
       const data = await res.json();
       if (data.success) {
         setInvoices(data.data || []);
@@ -32,7 +53,8 @@ export function InvoicesTable({ tenantId, cashShiftId }: InvoicesTableProps) {
   };
 
   useEffect(() => {
-    fetchInvoices();
+    if (tenantId) fetchInvoices();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tenantId]);
 
   const handleExportCsv = () => {
@@ -99,9 +121,10 @@ export function InvoicesTable({ tenantId, cashShiftId }: InvoicesTableProps) {
               ) : (
                 invoices.map((inv) => {
                   const remaining = inv.totalAmount - inv.paidAmount;
-                  const isPending = inv.status !== "PAID";
+                  const isPending = inv.status === "PENDING" || inv.status === "PARTIALLY_PAID";
                   const waUrl = generateWhatsAppLink({
-                    memberName: "Socio",
+                    phone: inv.memberPhone,
+                    memberName: inv.memberFirstName || "Socio",
                     type: "DEBT_REMINDER",
                     amount: remaining,
                     dueDate: inv.dueDate,
@@ -112,6 +135,7 @@ export function InvoicesTable({ tenantId, cashShiftId }: InvoicesTableProps) {
                     <tr key={inv.id} className="hover:bg-slate-800/30">
                       <td className="py-3 px-6 font-mono font-bold text-white">
                         {inv.invoiceNumber}
+                        <span className="block text-[10px] font-sans font-normal text-slate-500">{inv.memberName}</span>
                       </td>
                       <td className="py-3 px-6 font-mono">${inv.totalAmount.toLocaleString()}</td>
                       <td className="py-3 px-6 font-mono text-emerald-400">
@@ -134,6 +158,10 @@ export function InvoicesTable({ tenantId, cashShiftId }: InvoicesTableProps) {
                             ? "Cobrada"
                             : inv.status === "PARTIALLY_PAID"
                             ? "Pago Parcial"
+                            : inv.status === "VOIDED"
+                            ? "Anulada"
+                            : inv.status === "DRAFT"
+                            ? "Borrador"
                             : "Pendiente"}
                         </span>
                       </td>
@@ -153,13 +181,13 @@ export function InvoicesTable({ tenantId, cashShiftId }: InvoicesTableProps) {
                         {isPending && (
                           <button
                             onClick={() =>
-                              setSelectedInvoice({
+                              openPayment({
                                 id: inv.id,
                                 invoiceNumber: inv.invoiceNumber,
                                 totalAmount: inv.totalAmount,
                                 paidAmount: inv.paidAmount,
                                 remainingAmount: remaining,
-                                memberName: "Socio",
+                                memberName: inv.memberName || "Socio",
                               })
                             }
                             className="px-3 py-1.5 rounded-xl bg-emerald-500/10 hover:bg-emerald-500 text-emerald-400 hover:text-black font-bold text-xs border border-emerald-500/30 transition-all flex items-center gap-1"
@@ -184,7 +212,7 @@ export function InvoicesTable({ tenantId, cashShiftId }: InvoicesTableProps) {
           onClose={() => setSelectedInvoice(null)}
           tenantId={tenantId}
           invoice={selectedInvoice}
-          cashShiftId={cashShiftId}
+          cashShiftId={activeShiftId}
           onPaymentSuccess={fetchInvoices}
         />
       )}

@@ -1,5 +1,6 @@
 "use client";
 
+import { apiFetch } from "@/lib/api-client";
 import React, { useState, useEffect } from "react";
 import {
   User,
@@ -32,7 +33,7 @@ export function MemberList({ tenantId }: MemberListProps) {
     setLoading(true);
     try {
       const url = `/api/v1/users?tenantId=${tenantId}${search ? `&q=${encodeURIComponent(search)}` : ""}`;
-      const res = await fetch(url);
+      const res = await apiFetch(url);
       const data = await res.json();
       if (data.success) {
         setMembers(data.data || []);
@@ -44,8 +45,12 @@ export function MemberList({ tenantId }: MemberListProps) {
     }
   };
 
+  // FIX: antes se hacía una petición por cada tecla. Debounce de 300 ms.
   useEffect(() => {
-    fetchMembers();
+    if (!tenantId) return;
+    const t = setTimeout(() => fetchMembers(), 300);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tenantId, search]);
 
   const handleExportCsv = () => {

@@ -1,5 +1,6 @@
 "use client";
 
+import { apiFetch } from "@/lib/api-client";
 import React, { useState, useEffect } from "react";
 import {
   TrendingUp,
@@ -27,7 +28,7 @@ export function BusinessDashboard({ tenantId }: BusinessDashboardProps) {
   const fetchDashboard = async () => {
     setLoading(true);
     try {
-      const res = await fetch(`/api/v1/analytics/dashboard?tenantId=${tenantId}`);
+      const res = await apiFetch(`/api/v1/analytics/dashboard?tenantId=${tenantId}`);
       const json = await res.json();
       if (json.success) {
         setData(json.data);

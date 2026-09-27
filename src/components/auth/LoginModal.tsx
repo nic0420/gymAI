@@ -6,13 +6,16 @@ import { Lock, Mail, Building2, KeyRound, CheckCircle2, ArrowRight, X, ShieldAle
 interface LoginModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onLoginSuccess: (user: any, tenant: any) => void;
+  onLoginSuccess: (user: any, tenant: any, accessToken: string) => void;
 }
 
 export function LoginModal({ isOpen, onClose, onLoginSuccess }: LoginModalProps) {
-  const [tenantSlug, setTenantSlug] = useState("gimnasio-libertad");
-  const [identifier, setIdentifier] = useState("nicolaslarrocapf@gmail.com");
-  const [password, setPassword] = useState("Libertad12345");
+  // FIX CRÍTICO: antes el formulario venía pre-cargado con credenciales reales de producción
+  // (cuenta CEO y cuenta de un cliente) y botones de "acceso rápido". Esas contraseñas quedaban
+  // expuestas en el bundle JS público para cualquier visitante.
+  const [tenantSlug, setTenantSlug] = useState("");
+  const [identifier, setIdentifier] = useState("");
+  const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
 
@@ -27,8 +30,9 @@ export function LoginModal({ isOpen, onClose, onLoginSuccess }: LoginModalProps)
       const res = await fetch("/api/v1/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        credentials: "same-origin",
         body: JSON.stringify({
-          tenantSlug,
+          tenantSlug: tenantSlug.trim().toLowerCase(),
           identifier,
           password,
         }),
@@ -36,7 +40,8 @@ export function LoginModal({ isOpen, onClose, onLoginSuccess }: LoginModalProps)
 
       const data = await res.json();
       if (res.ok && data.success) {
-        onLoginSuccess(data.data.user, data.data.tenant);
+        setPassword("");
+        onLoginSuccess(data.data.user, data.data.tenant, data.data.accessToken);
         onClose();
       } else {
         setErrorMsg(data.message || "Credenciales inválidas. Verifica tu slug, email y contraseña.");
@@ -45,18 +50,6 @@ export function LoginModal({ isOpen, onClose, onLoginSuccess }: LoginModalProps)
       setErrorMsg("Error de conexión con el servidor de autenticación.");
     } finally {
       setLoading(false);
-    }
-  };
-
-  const handleQuickFill = (type: "ceo" | "amigo") => {
-    if (type === "ceo") {
-      setTenantSlug("litoral-dev");
-      setIdentifier("ojedanicolas1b@gmail.com");
-      setPassword("Onlythresh420");
-    } else {
-      setTenantSlug("gimnasio-libertad");
-      setIdentifier("nicolaslarrocapf@gmail.com");
-      setPassword("Libertad12345");
     }
   };
 
@@ -79,34 +72,10 @@ export function LoginModal({ isOpen, onClose, onLoginSuccess }: LoginModalProps)
           </div>
           <h2 className="text-2xl font-bold text-white tracking-tight">Iniciar Sesión</h2>
           <p className="text-xs text-zinc-400 mt-1">
-            Ingresa a tu organización o utiliza los accesos rápidos.
+            Ingresa el identificador de tu gimnasio y tus credenciales.
           </p>
         </div>
 
-        {/* Quick Fill Buttons */}
-        <div className="p-3 bg-zinc-900/60 rounded-2xl border border-zinc-800/80 space-y-2">
-          <span className="text-[11px] font-mono text-zinc-400 uppercase tracking-wider block">
-            Cuentas Aprovisionadas:
-          </span>
-          <div className="grid grid-cols-2 gap-2">
-            <button
-              type="button"
-              onClick={() => handleQuickFill("ceo")}
-              className="px-3 py-2 rounded-xl bg-zinc-900 hover:bg-blue-600/20 hover:border-blue-500/40 border border-zinc-800 text-left transition-all group"
-            >
-              <span className="text-xs font-bold text-white block group-hover:text-blue-400">👑 CEO Master</span>
-              <span className="text-[10px] text-zinc-500 block">Litoral.dev</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => handleQuickFill("amigo")}
-              className="px-3 py-2 rounded-xl bg-zinc-900 hover:bg-emerald-600/20 hover:border-emerald-500/40 border border-zinc-800 text-left transition-all group"
-            >
-              <span className="text-xs font-bold text-white block group-hover:text-emerald-400">🏋️ Amigo (Plan VIP)</span>
-              <span className="text-[10px] text-zinc-500 block">Gimnasio Libertad</span>
-            </button>
-          </div>
-        </div>
 
         {/* Error Notification */}
         {errorMsg && (

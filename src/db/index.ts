@@ -7,19 +7,21 @@ import fs from "node:fs";
 
 // En entorno de desarrollo / tests usamos better-sqlite3 local
 const dbPath = process.env.DATABASE_URL?.replace("file:", "") || "./local.db";
-const absoluteDbPath = path.isAbsolute(dbPath)
-  ? dbPath
-  : path.join(process.cwd(), dbPath);
+const isMemory = dbPath === ":memory:";
+const absoluteDbPath = isMemory || path.isAbsolute(dbPath) ? dbPath : path.join(process.cwd(), dbPath);
 
 // Asegurar directorio
-const dbDir = path.dirname(absoluteDbPath);
-if (!fs.existsSync(dbDir)) {
-  fs.mkdirSync(dbDir, { recursive: true });
+if (!isMemory) {
+  const dbDir = path.dirname(absoluteDbPath);
+  if (!fs.existsSync(dbDir)) {
+    fs.mkdirSync(dbDir, { recursive: true });
+  }
 }
 
 const sqlite = new Database(absoluteDbPath);
 // Habilitar WAL (Write-Ahead Logging) y Foreign Keys en SQLite para máxima concurrencia local
-sqlite.pragma("journal_mode = WAL");
+if (!isMemory) sqlite.pragma("journal_mode = WAL");
+sqlite.pragma("busy_timeout = 5000");
 sqlite.pragma("foreign_keys = ON");
 
 // Inicializar esquema relacional completo

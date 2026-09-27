@@ -1,5 +1,6 @@
 "use client";
 
+import { apiFetch } from "@/lib/api-client";
 import React, { useState, useEffect } from "react";
 import {
   DollarSign,
@@ -36,11 +37,23 @@ export function CashRegisterView({ tenantId, branchId }: CashRegisterViewProps) 
   const [expenseDesc, setExpenseDesc] = useState("");
 
   const [closeSummary, setCloseSummary] = useState<any>(null);
+  // FIX: antes los errores de la API se tragaban en silencio (p.ej. el alta de caja fallaba
+  // siempre por el usuario ficticio "USER_RECEPCION" y el botón "no hacía nada").
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  const readError = async (res: Response, fallback: string) => {
+    try {
+      const data = await res.json();
+      return data?.message || fallback;
+    } catch {
+      return fallback;
+    }
+  };
 
   const fetchCashShift = async () => {
     setLoading(true);
     try {
-      const res = await fetch(`/api/v1/finance/cash-shifts?tenantId=${tenantId}&branchId=${branchId}`);
+      const res = await apiFetch(`/api/v1/finance/cash-shifts?tenantId=${tenantId}&branchId=${branchId}`);
       const data = await res.json();
       if (data.success) {
         setShiftData(data.data);
@@ -53,25 +66,28 @@ export function CashRegisterView({ tenantId, branchId }: CashRegisterViewProps) 
   };
 
   useEffect(() => {
-    fetchCashShift();
+    if (tenantId && branchId) fetchCashShift();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tenantId, branchId]);
 
   const handleOpenShift = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const res = await fetch("/api/v1/finance/cash-shifts", {
+      const res = await apiFetch("/api/v1/finance/cash-shifts", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           tenantId,
           branchId,
-          openedByUserId: "USER_RECEPCION",
           initialCash: Number(initialCash),
         }),
       });
       if (res.ok) {
+        setErrorMsg(null);
         setOpenModal(false);
         fetchCashShift();
+      } else {
+        setErrorMsg(await readError(res, "No se pudo abrir la caja"));
       }
     } catch (err) {
       console.error("Error al abrir caja:", err);
@@ -82,7 +98,7 @@ export function CashRegisterView({ tenantId, branchId }: CashRegisterViewProps) 
     e.preventDefault();
     if (!shiftData?.shift?.id) return;
     try {
-      const res = await fetch("/api/v1/finance/cash-movements", {
+      const res = await apiFetch("/api/v1/finance/cash-movements", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -92,14 +108,16 @@ export function CashRegisterView({ tenantId, branchId }: CashRegisterViewProps) 
           category: expenseCategory,
           amount: Number(expenseAmount),
           description: expenseDesc,
-          registeredByUserId: "USER_RECEPCION",
         }),
       });
       if (res.ok) {
+        setErrorMsg(null);
         setExpenseModal(false);
         setExpenseAmount("");
         setExpenseDesc("");
         fetchCashShift();
+      } else {
+        setErrorMsg(await readError(res, "No se pudo registrar el gasto"));
       }
     } catch (err) {
       console.error("Error al registrar egreso:", err);
@@ -110,20 +128,23 @@ export function CashRegisterView({ tenantId, branchId }: CashRegisterViewProps) 
     e.preventDefault();
     if (!shiftData?.shift?.id) return;
     try {
-      const res = await fetch("/api/v1/finance/cash-shifts/close", {
+      const res = await apiFetch("/api/v1/finance/cash-shifts/close", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           cashShiftId: shiftData.shift.id,
-          closedByUserId: "USER_RECEPCION",
           declaredCash: Number(declaredCash),
         }),
       });
       const data = await res.json();
       if (res.ok) {
+        setErrorMsg(null);
         setCloseSummary(data.data);
         setCloseModal(false);
+        setDeclaredCash("");
         setShiftData(null);
+      } else {
+        setErrorMsg(data?.message || "No se pudo cerrar la caja");
       }
     } catch (err) {
       console.error("Error al cerrar caja:", err);
@@ -159,7 +180,15 @@ export function CashRegisterView({ tenantId, branchId }: CashRegisterViewProps) 
               onClick={() =>
                 exportCashMovementsToCsv(
                   shiftData.movements,
-                  shiftData.shift,
+                  // FIX: antes se pasaba el objeto "shift" como resumen y el Excel salía con totales en 0
+                  shiftData.summary
+                    ? {
+                        initialCash: shiftData.summary.initialCash,
+                        totalCashIncomes: shiftData.summary.totalIncomes,
+                        totalCashExpenses: shiftData.summary.totalExpenses,
+                        systemExpectedCash: shiftData.summary.currentCalculatedCash,
+                      }
+                    : undefined,
                   `arqueo_caja_${new Date().toISOString().split("T")[0]}.csv`
                 )
               }
@@ -199,6 +228,13 @@ export function CashRegisterView({ tenantId, branchId }: CashRegisterViewProps) 
           )}
         </div>
       </div>
+
+      {errorMsg && (
+        <div className="p-3 rounded-2xl bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs flex items-center gap-2">
+          <AlertTriangle className="w-4 h-4 shrink-0" />
+          <span>{errorMsg}</span>
+        </div>
+      )}
 
       {/* Resumen del Cierre Reciente si existe */}
       {closeSummary && (
@@ -260,7 +296,19 @@ export function CashRegisterView({ tenantId, branchId }: CashRegisterViewProps) 
       )}
 
       {/* Cards de Métricas de la Caja Activa */}
-      {shiftData?.shift ? (
+      {shiftData?.shift && shiftData.blind ? (
+        // ARQUEO CIEGO real: el recepcionista no ve el saldo teórico hasta después de declarar
+        <div className="glass-panel p-6 rounded-3xl border border-slate-800 flex items-center gap-4">
+          <Lock className="w-8 h-8 text-emerald-400 shrink-0" />
+          <div>
+            <h3 className="text-sm font-bold text-white">Caja abierta · Arqueo ciego activo</h3>
+            <p className="text-xs text-slate-400 mt-1">
+              Los totales y el saldo teórico se revelan recién al cerrar el turno, después de declarar el efectivo
+              contado. Movimientos registrados: {shiftData.movementsCount ?? 0}.
+            </p>
+          </div>
+        </div>
+      ) : shiftData?.shift ? (
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <div className="glass-panel p-5 rounded-2xl border border-slate-800">
             <span className="text-xs text-slate-400 font-semibold block">Fondo Inicial</span>

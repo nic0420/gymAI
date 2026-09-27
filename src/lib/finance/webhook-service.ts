@@ -1,6 +1,6 @@
 import crypto from "node:crypto";
 import { db } from "@/db";
-import { webhookEvents } from "@/db/schema";
+import { webhookEvents, invoices } from "@/db/schema";
 import { generateUUIDv7 } from "@/lib/security/uuid";
 import { processPaymentTransaction } from "./payment-service";
 import { eq, and } from "drizzle-orm";
@@ -21,10 +21,12 @@ export function verifyWebhookSignature(
       .update(payloadRaw)
       .digest("hex");
 
-    return crypto.timingSafeEqual(
-      Buffer.from(signatureHeader),
-      Buffer.from(expectedSignature)
-    );
+    // Acepta "abc123..." o "sha256=abc123..."
+    const provided = signatureHeader.trim().replace(/^sha256=/i, "").toLowerCase();
+    const a = Buffer.from(provided);
+    const b = Buffer.from(expectedSignature);
+    if (a.length !== b.length) return false;
+    return crypto.timingSafeEqual(a, b);
   } catch {
     return false;
   }
@@ -58,27 +60,50 @@ export async function processGatewayWebhook(params: {
     ),
   });
 
-  if (existingEvent) {
+  // FIX: un evento que falló (p.ej. error transitorio de BD) debe poder reintentarse.
+  // Antes quedaba "FAILED" para siempre y todos los reintentos de la pasarela se ignoraban,
+  // perdiendo el pago.
+  let eventId: string;
+  if (existingEvent && existingEvent.status === "FAILED") {
+    eventId = existingEvent.id;
+    await db
+      .update(webhookEvents)
+      .set({ status: "PROCESSING", errorMessage: null })
+      .where(eq(webhookEvents.id, eventId));
+  } else if (existingEvent) {
     return {
       alreadyProcessed: true,
       eventId: existingEvent.id,
       status: existingEvent.status === "PROCESSED" ? "PROCESSED" : "IGNORED",
       message: "Evento recibido previamente. Ignorando para garantizar idempotencia.",
     };
+  } else {
+    // 2. Registrar evento con estado PROCESSING. El índice UNIQUE(gateway, external_event_id)
+    // protege contra dos entregas simultáneas del mismo evento.
+    eventId = generateUUIDv7();
+    try {
+      await db.insert(webhookEvents).values({
+        id: eventId,
+        tenantId: tenantId || null,
+        gateway,
+        externalEventId,
+        eventType,
+        status: "PROCESSING",
+        payload: JSON.stringify(payload),
+        receivedAt: nowIso,
+      });
+    } catch (err: any) {
+      if (String(err?.message || "").includes("UNIQUE")) {
+        return {
+          alreadyProcessed: true,
+          eventId: "",
+          status: "IGNORED",
+          message: "Evento duplicado recibido en paralelo. Ignorado por idempotencia.",
+        };
+      }
+      throw err;
+    }
   }
-
-  // 2. Registrar evento con estado PENDING
-  const eventId = generateUUIDv7();
-  await db.insert(webhookEvents).values({
-    id: eventId,
-    tenantId: tenantId || null,
-    gateway,
-    externalEventId,
-    eventType,
-    status: "PROCESSING",
-    payload: JSON.stringify(payload),
-    receivedAt: nowIso,
-  });
 
   try {
     // 3. Procesar lógica de negocio según el tipo de evento
@@ -87,13 +112,20 @@ export async function processGatewayWebhook(params: {
       const amount = payload.amount || payload.transaction_amount;
       const gatewayRef = payload.paymentId || payload.id;
 
-      if (invoiceId && amount && tenantId) {
+      if (invoiceId && amount) {
+        // El tenant se deriva de la factura en la BD (no del payload, que controla el emisor)
+        const invoice = await db.query.invoices.findFirst({ where: eq(invoices.id, String(invoiceId)) });
+        if (!invoice) throw new Error("INVOICE_NOT_FOUND");
+        if (tenantId && tenantId !== invoice.tenantId) throw new Error("TENANT_MISMATCH");
+        const numericAmount = Number(amount);
+        if (!Number.isFinite(numericAmount) || numericAmount <= 0) throw new Error("INVALID_AMOUNT");
+
         await processPaymentTransaction({
-          tenantId,
+          tenantId: invoice.tenantId,
           invoiceId,
           splits: [
             {
-              amount: Number(amount),
+              amount: numericAmount,
               paymentMethod: gateway === "MERCADO_PAGO" ? "MERCADO_PAGO_QR" : "STRIPE",
               gatewayReference: String(gatewayRef),
             },

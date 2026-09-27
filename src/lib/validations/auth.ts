@@ -35,6 +35,8 @@ export const RegisterTenantSchema = z.object({
 
   adminEmail: z
     .string({ required_error: "El email del administrador es obligatorio" })
+    .trim()
+    .toLowerCase()
     .email("Ingresa un formato de email válido (ej: admin@gimnasio.com)"),
 
   adminPassword: z

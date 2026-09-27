@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   ShieldCheck,
   Lock,
@@ -29,7 +29,9 @@ import {
   Bell,
   Sparkles,
   CreditCard,
+  LogOut,
 } from "lucide-react";
+import { setAccessToken, refreshSession, onSessionExpired, logout } from "@/lib/api-client";
 
 import { CheckInTerminal } from "@/components/reception/CheckInTerminal";
 import { MemberList } from "@/components/users/MemberList";
@@ -55,14 +57,19 @@ export default function HomePage() {
 
 function HomeContent() {
   const { info, success } = useToast();
-  const [viewMode, setViewMode] = useState<"landing" | "app">("app");
+  // FIX: antes la app arrancaba directamente en modo "app" como SUPERADMIN hardcodeado,
+  // sin login. Ahora se entra a la app sólo con una sesión válida.
+  const [viewMode, setViewMode] = useState<"landing" | "app">("landing");
+  const [sessionReady, setSessionReady] = useState(false);
   const [activeTab, setActiveTab] = useState<
     "checkin" | "members" | "finance" | "workouts" | "live_tracker" | "analytics" | "architecture" | "security"
   >("checkin");
 
-  const [demoTenantId, setDemoTenantId] = useState("demo-tenant-id");
-  const [demoBranchId, setDemoBranchId] = useState("demo-branch-id");
-  const [selectedBranchName, setSelectedBranchName] = useState("Sede Central");
+  // FIX: "demo-tenant-id"/"demo-branch-id" no existían en la BD -> toda operación fallaba por FK.
+  // Además la sede no se actualizaba tras el login. Ahora vienen de la sesión.
+  const [demoTenantId, setDemoTenantId] = useState("");
+  const [demoBranchId, setDemoBranchId] = useState("");
+  const [branchOptions, setBranchOptions] = useState<{ id: string; name: string }[]>([]);
   const [isKioskOpen, setIsKioskOpen] = useState(false);
   const [isTourOpen, setIsTourOpen] = useState(false);
   const [isLoginOpen, setIsLoginOpen] = useState(false);
@@ -71,17 +78,19 @@ function HomeContent() {
 
 
   // Usuario y Tenant Activo
-  const [currentUser, setCurrentUser] = useState({
-    name: "Nicolas Ojeda",
-    role: "SUPERADMIN",
-    email: "ojedanicolas1b@gmail.com",
-    initials: "NO",
-    tenantName: "Litoral.dev",
-    plan: "MASTER_GLOBAL_CEO",
-  });
+  const [currentUser, setCurrentUser] = useState<{
+    id: string;
+    name: string;
+    role: string;
+    email: string;
+    initials: string;
+    tenantName: string;
+    plan: string;
+  } | null>(null);
 
-  const handleLoginSuccess = (user: any, tenant: any) => {
+  const applySession = (user: any, tenant: any) => {
     setCurrentUser({
+      id: user.id,
       name: `${user.firstName} ${user.lastName}`,
       role: user.role,
       email: user.email,
@@ -90,13 +99,66 @@ function HomeContent() {
       plan: tenant.settings?.plan || "ENTERPRISE_VIP",
     });
     setDemoTenantId(tenant.id);
-    setSelectedBranchName("Sede Central");
+    const branches: { id: string; name: string }[] = tenant.branches || [];
+    setBranchOptions(branches);
+    setDemoBranchId(branches[0]?.id || "");
+  };
+
+  const handleLoginSuccess = (user: any, tenant: any, accessToken: string) => {
+    setAccessToken(accessToken);
+    applySession(user, tenant);
     setViewMode("app");
     success(`¡Bienvenido ${user.firstName}! Has ingresado a ${tenant.name}`);
   };
 
+  const clearSession = () => {
+    setAccessToken(null);
+    setCurrentUser(null);
+    setDemoTenantId("");
+    setDemoBranchId("");
+    setBranchOptions([]);
+    setViewMode("landing");
+  };
+
+  const handleLogout = async () => {
+    await logout();
+    clearSession();
+    info("Sesión cerrada");
+  };
+
+  // Restaurar sesión al recargar (cookie HttpOnly de refresh) y reaccionar a expiración
+  useEffect(() => {
+    let cancelled = false;
+    refreshSession().then((data) => {
+      if (cancelled) return;
+      if (data) {
+        applySession(data.user, data.tenant);
+        setViewMode("app");
+      }
+      setSessionReady(true);
+    });
+    const unsubscribe = onSessionExpired(() => {
+      clearSession();
+      setIsLoginOpen(true);
+    });
+    return () => {
+      cancelled = true;
+      unsubscribe();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const enterApp = (tab?: string) => {
+    if (tab) setActiveTab(tab as any);
+    if (!currentUser) {
+      setIsLoginOpen(true);
+      return;
+    }
+    setViewMode("app");
+  };
+
   // If in Landing Mode, render the high-conversion B2B showcase
-  if (viewMode === "landing") {
+  if (viewMode === "landing" || !currentUser) {
     return (
       <>
         <LoginModal
@@ -105,17 +167,23 @@ function HomeContent() {
           onLoginSuccess={handleLoginSuccess}
         />
         <PublicLandingPage
-          onEnterApp={(tab) => {
-            if (tab) setActiveTab(tab as any);
-            setViewMode("app");
-          }}
-          onLaunchKiosk={() => setIsKioskOpen(true)}
+          onEnterApp={enterApp}
+          onLaunchKiosk={() => (currentUser ? setIsKioskOpen(true) : setIsLoginOpen(true))}
           onLaunchTour={(tourId) => {
             setSelectedTour(tourId);
             setIsTourOpen(true);
           }}
           onOpenLogin={() => setIsLoginOpen(true)}
+          isAuthenticated={Boolean(currentUser)}
         />
+        {isKioskOpen && currentUser && (
+          <TouchKioskTerminal
+            tenantId={demoTenantId}
+            branchId={demoBranchId}
+            onClose={() => setIsKioskOpen(false)}
+          />
+        )}
+        {!sessionReady && <span className="sr-only">Verificando sesión…</span>}
       </>
     );
   }
@@ -137,7 +205,13 @@ function HomeContent() {
       />
 
       {/* Touch Kiosk Overlay Mode */}
-      {isKioskOpen && <TouchKioskTerminal onClose={() => setIsKioskOpen(false)} />}
+      {isKioskOpen && (
+        <TouchKioskTerminal
+          tenantId={demoTenantId}
+          branchId={demoBranchId}
+          onClose={() => setIsKioskOpen(false)}
+        />
+      )}
 
       {/* Guided Tour Modal */}
       <GuidedTourModal
@@ -170,15 +244,21 @@ function HomeContent() {
             {/* Tenant Selector Dropdown */}
             <div className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-xl bg-zinc-900 border border-zinc-800 text-xs text-zinc-300">
               <Building2 className="w-3.5 h-3.5 text-blue-400" />
+              {/* FIX: antes había 3 sedes ficticias fijas que no cambiaban nada; ahora son las sedes reales */}
               <select
                 aria-label="Seleccionar Sucursal Activa"
-                value={selectedBranchName}
-                onChange={(e) => setSelectedBranchName(e.target.value)}
+                value={demoBranchId}
+                onChange={(e) => setDemoBranchId(e.target.value)}
                 className="bg-transparent text-zinc-200 text-xs font-semibold focus:outline-none cursor-pointer pr-2"
               >
-                <option value="Sede Central" className="bg-zinc-900 text-zinc-200">Sede Central ({currentUser.tenantName})</option>
-                <option value="Sede Palermo Soho" className="bg-zinc-900 text-zinc-200">Sede Palermo Soho</option>
-                <option value="Sede Recoleta VIP" className="bg-zinc-900 text-zinc-200">Sede Recoleta VIP</option>
+                {branchOptions.length === 0 && (
+                  <option value="" className="bg-zinc-900 text-zinc-200">Sin sedes configuradas</option>
+                )}
+                {branchOptions.map((b) => (
+                  <option key={b.id} value={b.id} className="bg-zinc-900 text-zinc-200">
+                    {b.name}
+                  </option>
+                ))}
               </select>
             </div>
           </div>
@@ -193,6 +273,16 @@ function HomeContent() {
             >
               <CreditCard className="w-3.5 h-3.5 text-emerald-400" />
               <span className="hidden sm:inline">Pagar Suscripción</span>
+            </button>
+
+            {/* Cerrar sesión */}
+            <button
+              onClick={handleLogout}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-zinc-300 hover:text-white border border-zinc-800/80 transition-all text-xs font-semibold"
+              title="Cerrar sesión"
+            >
+              <LogOut className="w-3.5 h-3.5 text-rose-400" />
+              <span className="hidden md:inline">Salir</span>
             </button>
 
             {/* Login / Cambiar Cuenta */}
@@ -377,7 +467,7 @@ function HomeContent() {
           <div className="space-y-8">
             <CashRegisterView tenantId={demoTenantId} branchId={demoBranchId} />
             <div className="pt-4 border-t border-zinc-800">
-              <InvoicesTable tenantId={demoTenantId} />
+              <InvoicesTable tenantId={demoTenantId} branchId={demoBranchId} />
             </div>
           </div>
         )}
@@ -387,7 +477,7 @@ function HomeContent() {
 
         {/* TAB 5: Live Tracker (1RM Epley) */}
         {activeTab === "live_tracker" && (
-          <LiveWorkoutTracker tenantId={demoTenantId} userId="USER_DEMO_SOCIO" />
+          <LiveWorkoutTracker tenantId={demoTenantId} userId={currentUser.id} />
         )}
 
         {/* TAB 6: Business Intelligence & Heatmap 7x24 */}

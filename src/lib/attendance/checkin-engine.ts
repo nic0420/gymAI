@@ -3,6 +3,7 @@ import { users, subscriptions, medicalRecords, attendances } from "@/db/schema";
 import { generateBlindIndex } from "@/lib/security/encryption";
 import { generateUUIDv7 } from "@/lib/security/uuid";
 import { eq, and, desc } from "drizzle-orm";
+import { getLocalDateString, diffInCalendarDays } from "@/lib/time/dates";
 
 export interface CheckInResult {
   accessStatus: "GRANTED_GREEN" | "WARNING_YELLOW" | "DENIED_RED";
@@ -43,7 +44,7 @@ export async function evaluateAndProcessCheckIn(params: {
 }): Promise<CheckInResult> {
   const startTime = performance.now();
   const now = new Date();
-  const todayStr = now.toISOString().split("T")[0]; // YYYY-MM-DD
+  const todayStr = getLocalDateString(now); // YYYY-MM-DD en la zona horaria del gimnasio
   const nowIso = now.toISOString();
 
   const rawDni = params?.dni ?? "";
@@ -124,8 +125,6 @@ export async function evaluateAndProcessCheckIn(params: {
   let warningReason: string | undefined;
   let denialReason: string | undefined;
 
-  const todayMidnight = new Date(todayStr).getTime();
-
   // 3. Reglas de Validación de Suscripción
   if (!latestSubscription) {
     accessStatus = "DENIED_RED";
@@ -145,8 +144,7 @@ export async function evaluateAndProcessCheckIn(params: {
     warningReason = `Regularizar pago antes del fin de gracia`;
   } else {
     // Verificar si vence en los próximos 3 días (calendario)
-    const endMidnight = new Date(latestSubscription.endDate).getTime();
-    const diffDays = Math.round((endMidnight - todayMidnight) / (1000 * 60 * 60 * 24));
+    const diffDays = diffInCalendarDays(todayStr, latestSubscription.endDate);
     if (diffDays <= 3 && diffDays >= 0) {
       accessStatus = "WARNING_YELLOW";
       message = `Paso Autorizado: Tu membresía vence en ${diffDays} día(s) (${latestSubscription.endDate})`;
@@ -166,11 +164,13 @@ export async function evaluateAndProcessCheckIn(params: {
       denialReason = "Apto médico caducado";
     } else if (medical.clearanceExpiryDate) {
       // Verificar si el apto vence en ≤ 7 días
-      const medEndMidnight = new Date(medical.clearanceExpiryDate).getTime();
-      const medicalDiffDays = Math.round((medEndMidnight - todayMidnight) / (1000 * 60 * 60 * 24));
+      const medicalDiffDays = diffInCalendarDays(todayStr, medical.clearanceExpiryDate);
       if (medicalDiffDays <= 7 && medicalDiffDays >= 0) {
         accessStatus = "WARNING_YELLOW";
-        message = `Paso Autorizado: Apto médico vence en ${medicalDiffDays} día(s) (${medical.clearanceExpiryDate})`;
+        // FIX: si ya había aviso de cuota, se conserva (antes se pisaba el mensaje)
+        message = warningReason
+          ? `${message} · Apto médico vence en ${medicalDiffDays} día(s)`
+          : `Paso Autorizado: Apto médico vence en ${medicalDiffDays} día(s) (${medical.clearanceExpiryDate})`;
         warningReason = (warningReason ? `${warningReason} | ` : "") + `Apto médico vence pronto (${medical.clearanceExpiryDate})`;
       }
     }

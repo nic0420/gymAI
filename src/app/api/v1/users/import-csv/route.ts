@@ -1,10 +1,41 @@
 import { NextRequest, NextResponse } from "next/server";
+import crypto from "node:crypto";
+import { getLocalDateString, addDaysToDateString } from "@/lib/time/dates";
 import { db } from "@/db";
 import { users, subscriptions, medicalRecords, membershipPlans, invoices } from "@/db/schema";
 import { generateBlindIndex } from "@/lib/security/encryption";
 import { hashPassword } from "@/lib/security/hash";
 import { generateUUIDv7 } from "@/lib/security/uuid";
 import { eq, and } from "drizzle-orm";
+import { z } from "zod";
+import { requireAuth, assertSameTenant } from "@/lib/auth/guard";
+import { ATOMIC_PERMISSIONS } from "@/lib/auth/rbac";
+
+const MAX_ROWS = 2000;
+
+/**
+ * FIX: antes no había validación: un CSV con estado "Activo" o "moroso" insertaba valores
+ * fuera del enum en la BD, y un DNI con letras/puntos generaba duplicados "invisibles".
+ */
+const ImportRowSchema = z.object({
+  dni: z.coerce.string().transform((v) => v.replace(/[.\s-]/g, "")).pipe(z.string().regex(/^\d{6,12}$/, "DNI inválido")),
+  firstName: z.string().trim().min(1),
+  lastName: z.string().trim().min(1),
+  email: z.string().trim().optional(),
+  phone: z.coerce.string().trim().optional(),
+  planName: z.string().trim().optional(),
+  durationDays: z.coerce.number().int().positive().max(3650).optional(),
+  price: z.coerce.number().nonnegative().optional(),
+  status: z
+    .string()
+    .trim()
+    .toUpperCase()
+    .transform((v) => (v === "" ? "ACTIVE" : v))
+    .pipe(z.enum(["ACTIVE", "DEBTOR", "INACTIVE"]))
+    .optional(),
+  medicalClearanceStatus: z.enum(["VALID", "PENDING_REVIEW", "EXPIRED", "REJECTED"]).optional(),
+  clearanceExpiryDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+});
 
 interface ImportMemberItem {
   dni: string;
@@ -22,14 +53,24 @@ interface ImportMemberItem {
 
 export async function POST(req: NextRequest) {
   try {
-    const body = await req.json();
-    const { tenantId, branchId, members } = body as {
-      tenantId: string;
-      branchId?: string;
-      members: ImportMemberItem[];
-    };
+    const auth = await requireAuth(req, ATOMIC_PERMISSIONS.USERS_WRITE);
+    if (!auth.ok) return auth.response;
+    const { ctx } = auth;
 
-    if (!tenantId || !Array.isArray(members) || members.length === 0) {
+    const body = await req.json();
+    const mismatch = assertSameTenant(ctx, body?.tenantId);
+    if (mismatch) return mismatch;
+    const tenantId = ctx.tenantId;
+    const members = body?.members as ImportMemberItem[];
+
+    if (Array.isArray(members) && members.length > MAX_ROWS) {
+      return NextResponse.json(
+        { success: false, error: `Máximo ${MAX_ROWS} socios por importación` },
+        { status: 413 }
+      );
+    }
+
+    if (!Array.isArray(members) || members.length === 0) {
       return NextResponse.json(
         { success: false, error: "tenantId y array de socios son obligatorios" },
         { status: 400 }
@@ -38,23 +79,38 @@ export async function POST(req: NextRequest) {
 
     const now = new Date();
     const nowIso = now.toISOString();
-    const todayStr = nowIso.split("T")[0];
-    const defaultPasswordHash = await hashPassword("Socio1234!");
+    const todayStr = getLocalDateString(now);
+    // Contraseña inicial aleatoria por importación (antes: "Socio1234!" fija y conocida para TODOS los socios)
+    const defaultPasswordHash = await hashPassword(crypto.randomBytes(18).toString("base64url"));
 
     let importedCount = 0;
     let skippedCount = 0;
     const errors: string[] = [];
 
-    for (const item of members) {
-      const rawDni = (item.dni || "").toString().trim();
-      const firstName = (item.firstName || "").trim();
-      const lastName = (item.lastName || "").trim();
+    const seenInFile = new Set<string>();
 
-      if (!rawDni || !firstName || !lastName) {
+    for (const [index, rawItem] of members.entries()) {
+      const parsed = ImportRowSchema.safeParse(rawItem);
+      if (!parsed.success) {
         skippedCount++;
-        errors.push(`Fila con datos incompletos (DNI: ${rawDni || "vacio"}, Nombre: ${firstName || "vacio"})`);
+        const firstIssue = parsed.error.issues[0];
+        errors.push(
+          `Fila ${index + 1}: ${firstIssue?.path.join(".") || "dato"} inválido (${firstIssue?.message || "formato"})`
+        );
         continue;
       }
+      const item = parsed.data;
+      const rawDni = item.dni;
+      const firstName = item.firstName;
+      const lastName = item.lastName;
+
+      // DNI repetido dentro del mismo archivo
+      if (seenInFile.has(rawDni)) {
+        skippedCount++;
+        errors.push(`Fila ${index + 1}: DNI ${rawDni} repetido en el archivo`);
+        continue;
+      }
+      seenInFile.add(rawDni);
 
       const dniBlindIndex = generateBlindIndex(rawDni);
 
@@ -98,7 +154,7 @@ export async function POST(req: NextRequest) {
       const medStatus = item.medicalClearanceStatus || "VALID";
       const medExpiry =
         item.clearanceExpiryDate ||
-        new Date(now.getTime() + 180 * 24 * 60 * 60 * 1000).toISOString().split("T")[0];
+        addDaysToDateString(todayStr, 180);
 
       await db.insert(medicalRecords).values({
         id: generateUUIDv7(),
@@ -113,7 +169,7 @@ export async function POST(req: NextRequest) {
       // 3. Crear o asociar Plan de Membresía
       const planName = item.planName || "Pase Libre Mensual";
       const planDuration = item.durationDays || 30;
-      const planPrice = item.price || 25000;
+      const planPrice = item.price ?? 25000;
 
       let plan = await db.query.membershipPlans.findFirst({
         where: and(
@@ -138,9 +194,7 @@ export async function POST(req: NextRequest) {
 
       // 4. Crear Suscripción
       const subscriptionId = generateUUIDv7();
-      const subEndDate = new Date(now.getTime() + (plan?.durationDays || 30) * 24 * 60 * 60 * 1000)
-        .toISOString()
-        .split("T")[0];
+      const subEndDate = addDaysToDateString(todayStr, plan?.durationDays || 30);
 
       await db.insert(subscriptions).values({
         id: subscriptionId,
@@ -162,9 +216,11 @@ export async function POST(req: NextRequest) {
         tenantId,
         userId,
         subscriptionId,
-        invoiceNumber: `FAC-IMP-${Date.now().toString().slice(-6)}-${importedCount + 1}`,
-        totalAmount: planPrice,
-        paidAmount: isPaid ? planPrice : 0,
+        invoiceNumber: `FAC-IMP-${subscriptionId.slice(-12).toUpperCase()}`,
+        // FIX: se usa el precio real del plan (antes, si el plan ya existía con otro precio,
+        // la factura salía con el precio del CSV o el default $25.000)
+        totalAmount: plan!.price,
+        paidAmount: isPaid ? plan!.price : 0,
         status: isPaid ? "PAID" : "PENDING",
         dueDate: subEndDate,
         issuedAt: nowIso,

@@ -1,5 +1,6 @@
 "use client";
 
+import { apiFetch } from "@/lib/api-client";
 import React, { useState, useEffect } from "react";
 import { Dumbbell, Plus, Trash2, CheckCircle2, Copy, Sparkles, Clock, Flame } from "lucide-react";
 
@@ -31,8 +32,8 @@ export function WorkoutBuilder({ tenantId }: WorkoutBuilderProps) {
     setLoading(true);
     try {
       const [exRes, rRes] = await Promise.all([
-        fetch(`/api/v1/workouts/exercises?tenantId=${tenantId}`),
-        fetch(`/api/v1/workouts/routines?tenantId=${tenantId}&templatesOnly=true`),
+        apiFetch(`/api/v1/workouts/exercises?tenantId=${tenantId}`),
+        apiFetch(`/api/v1/workouts/routines?tenantId=${tenantId}&templatesOnly=true`),
       ]);
       const exData = await exRes.json();
       const rData = await rRes.json();
@@ -63,7 +64,8 @@ export function WorkoutBuilder({ tenantId }: WorkoutBuilderProps) {
 
   const handleAddExerciseToDay = (dayIdx: number, exerciseId: string) => {
     if (!exerciseId) return;
-    const updated = [...days];
+    // Copia profunda del día para no mutar el estado previo
+    const updated = days.map((d, i) => (i === dayIdx ? { ...d, exercises: [...d.exercises] } : d));
     const exObj = exercisesList.find((e) => e.id === exerciseId);
     updated[dayIdx].exercises.push({
       exerciseId,
@@ -79,16 +81,35 @@ export function WorkoutBuilder({ tenantId }: WorkoutBuilderProps) {
   };
 
   const handleRemoveExercise = (dayIdx: number, exIdx: number) => {
-    const updated = [...days];
-    updated[dayIdx].exercises.splice(exIdx, 1);
-    setDays(updated);
+    setDays(
+      days.map((d, i) =>
+        i === dayIdx
+          ? {
+              ...d,
+              // reindexar orderIndex para que no queden huecos
+              exercises: d.exercises
+                .filter((_: any, j: number) => j !== exIdx)
+                .map((ex: any, j: number) => ({ ...ex, orderIndex: j + 1 })),
+            }
+          : d
+      )
+    );
   };
+
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   const handleSaveRoutine = async (e: React.FormEvent) => {
     e.preventDefault();
+    setSaveError(null);
+    // FIX: un día sin ejercicios hacía fallar la validación del backend sin ningún aviso
+    const emptyDay = days.find((d) => d.exercises.length === 0);
+    if (emptyDay) {
+      setSaveError(`"${emptyDay.name}" no tiene ejercicios. Agregá al menos uno o eliminá el día.`);
+      return;
+    }
     setLoading(true);
     try {
-      const res = await fetch("/api/v1/workouts/routines", {
+      const res = await apiFetch("/api/v1/workouts/routines", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -106,6 +127,9 @@ export function WorkoutBuilder({ tenantId }: WorkoutBuilderProps) {
           setActiveView("list");
           fetchExercisesAndRoutines();
         }, 1500);
+      } else {
+        const data = await res.json().catch(() => null);
+        setSaveError(data?.message || "No se pudo guardar la rutina");
       }
     } catch (err) {
       console.error("Error al guardar rutina:", err);
@@ -147,6 +171,12 @@ export function WorkoutBuilder({ tenantId }: WorkoutBuilderProps) {
           )}
         </div>
       </div>
+
+      {saveError && (
+        <div className="p-3 rounded-2xl bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs">
+          {saveError}
+        </div>
+      )}
 
       {successMsg && (
         <div className="p-3.5 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 text-xs text-emerald-400 flex items-center gap-2">

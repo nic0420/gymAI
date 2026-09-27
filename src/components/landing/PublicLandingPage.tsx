@@ -1,5 +1,6 @@
 "use client";
 
+import { apiFetch } from "@/lib/api-client";
 import React, { useState } from "react";
 import {
   ShieldCheck,
@@ -29,6 +30,7 @@ interface PublicLandingProps {
   onLaunchKiosk: () => void;
   onLaunchTour: (tourId: string) => void;
   onOpenLogin?: () => void;
+  isAuthenticated?: boolean;
 }
 
 export function PublicLandingPage({
@@ -36,6 +38,7 @@ export function PublicLandingPage({
   onLaunchKiosk,
   onLaunchTour,
   onOpenLogin,
+  isAuthenticated = false,
 }: PublicLandingProps) {
   const [activeTabDemo, setActiveTabDemo] = useState<"pass" | "warn" | "deny">("pass");
   const [isSubscriptionOpen, setIsSubscriptionOpen] = useState(false);
@@ -44,17 +47,26 @@ export function PublicLandingPage({
   const [seedingDemo, setSeedingDemo] = useState(false);
   const [seedSuccess, setSeedSuccess] = useState<string | null>(null);
 
+  // FIX: antes enviaba tenantId "gimnasio-libertad" (un slug, no un ID -> fallaba por FK)
+  // y apuntaba al gimnasio de un cliente real. Ahora carga la demo en el gimnasio de la
+  // sesión del administrador logueado.
   const handleSeedDemo = async () => {
+    if (!isAuthenticated) {
+      onOpenLogin?.();
+      return;
+    }
     setSeedingDemo(true);
     setSeedSuccess(null);
     try {
-      const res = await fetch("/api/v1/admin/seed-demo", {
+      const res = await apiFetch("/api/v1/admin/seed-demo", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ tenantId: "gimnasio-libertad" }),
+        body: JSON.stringify({}),
       });
       const data = await res.json();
-      if (data.success) {
+      if (!data.success) {
+        setSeedSuccess(data.error || data.message || "No se pudieron cargar los datos demo");
+      } else {
         setSeedSuccess("¡Datos demo cargados con éxito! Entrando al sistema...");
         setTimeout(() => {
           onEnterApp("checkin");

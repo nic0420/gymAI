@@ -6,9 +6,20 @@ import { generateUUIDv7 } from "@/lib/security/uuid";
 import { hashPassword } from "@/lib/security/hash";
 import { generateBlindIndex } from "@/lib/security/encryption";
 import { eq } from "drizzle-orm";
+import { rateLimiter } from "@/lib/security/rate-limiter";
+import { getClientIp } from "@/lib/security/client-ip";
 
 export async function POST(req: NextRequest) {
   try {
+    // Anti-spam: máximo 5 altas de gimnasio por IP por hora
+    const rate = await rateLimiter.check(`register-tenant:${getClientIp(req)}`, 5, 60 * 60 * 1000);
+    if (!rate.allowed) {
+      return NextResponse.json(
+        { error: "RATE_LIMIT_EXCEEDED", message: "Demasiados registros desde esta red. Intenta más tarde." },
+        { status: 429 }
+      );
+    }
+
     const body = await req.json();
     const validated = RegisterTenantSchema.safeParse(body);
 
@@ -59,38 +70,42 @@ export async function POST(req: NextRequest) {
     const passwordHash = await hashPassword(adminPassword);
     const dniBlindIndex = generateBlindIndex(adminDni);
 
-    // 3. Insertar Tenant, Sucursal y SuperAdmin
-    await db.insert(tenants).values({
-      id: tenantId,
-      name: tenantName,
-      slug: tenantSlug,
-      email: adminEmail,
-      createdAt: now,
-      updatedAt: now,
-    });
+    // 3. Insertar Tenant, Sucursal y SuperAdmin en UNA transacción atómica
+    // (FIX: antes eran 3 inserts sueltos; un fallo intermedio dejaba un gimnasio sin admin
+    // y con el slug "ocupado" para siempre)
+    db.transaction((tx) => {
+      tx.insert(tenants).values({
+        id: tenantId,
+        name: tenantName,
+        slug: tenantSlug,
+        email: adminEmail,
+        createdAt: now,
+        updatedAt: now,
+      }).run();
 
-    await db.insert(branches).values({
-      id: branchId,
-      tenantId: tenantId,
-      name: branchName || "Sede Central",
-      address: branchAddress,
-      createdAt: now,
-      updatedAt: now,
-    });
+      tx.insert(branches).values({
+        id: branchId,
+        tenantId: tenantId,
+        name: branchName || "Sede Central",
+        address: branchAddress,
+        createdAt: now,
+        updatedAt: now,
+      }).run();
 
-    await db.insert(users).values({
-      id: adminId,
-      tenantId: tenantId,
-      dni: adminDni,
-      dniBlindIndex,
-      email: adminEmail,
-      passwordHash,
-      firstName: adminFirstName,
-      lastName: adminLastName,
-      role: "SUPERADMIN",
-      status: "ACTIVE",
-      createdAt: now,
-      updatedAt: now,
+      tx.insert(users).values({
+        id: adminId,
+        tenantId: tenantId,
+        dni: adminDni,
+        dniBlindIndex,
+        email: adminEmail,
+        passwordHash,
+        firstName: adminFirstName,
+        lastName: adminLastName,
+        role: "SUPERADMIN",
+        status: "ACTIVE",
+        createdAt: now,
+        updatedAt: now,
+      }).run();
     });
 
     return NextResponse.json(

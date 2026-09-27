@@ -5,6 +5,7 @@ import {
   users,
   attendances,
   invoices,
+  paymentTransactions,
 } from "../src/db/schema";
 import {
   generatePeakHoursHeatmap,
@@ -71,6 +72,13 @@ export async function runBiAnalyticsTests() {
   // 1. Simular Asistencias en Horarios Específicos:
   // - 3 accesos el Lunes a las 19:00 hs (2026-09-14T19:30:00Z -> Lunes)
   // - 2 accesos el Martes a las 08:00 hs (2026-09-15T08:15:00Z -> Martes)
+  // Fechas RELATIVAS a hoy (antes eran fijas: 2026-09-14, el test se rompía solo al mes).
+  // 19:xx y 08:xx hora Argentina = 22:xx y 11:xx UTC.
+  const at = (daysAgo: number, utcHour: number, minute: number) => {
+    const d = new Date(Date.now() - daysAgo * 86_400_000);
+    d.setUTCHours(utcHour, minute, 0, 0);
+    return d.toISOString();
+  };
   await db.insert(attendances).values([
     {
       id: generateUUIDv7(),
@@ -79,7 +87,7 @@ export async function runBiAnalyticsTests() {
       userId,
       accessStatus: "GRANTED_GREEN",
       accessMethod: "DNI_KEYPAD",
-      checkInAt: "2026-09-14T19:15:00Z",
+      checkInAt: at(3, 22, 15),
     },
     {
       id: generateUUIDv7(),
@@ -88,7 +96,7 @@ export async function runBiAnalyticsTests() {
       userId,
       accessStatus: "GRANTED_GREEN",
       accessMethod: "DNI_KEYPAD",
-      checkInAt: "2026-09-14T19:30:00Z",
+      checkInAt: at(3, 22, 30),
     },
     {
       id: generateUUIDv7(),
@@ -97,7 +105,7 @@ export async function runBiAnalyticsTests() {
       userId,
       accessStatus: "GRANTED_GREEN",
       accessMethod: "BARCODE_SCAN",
-      checkInAt: "2026-09-14T19:45:00Z",
+      checkInAt: at(3, 22, 45),
     },
     {
       id: generateUUIDv7(),
@@ -106,7 +114,7 @@ export async function runBiAnalyticsTests() {
       userId,
       accessStatus: "GRANTED_GREEN",
       accessMethod: "DNI_KEYPAD",
-      checkInAt: "2026-09-15T08:10:00Z",
+      checkInAt: at(2, 11, 10),
     },
     {
       id: generateUUIDv7(),
@@ -115,7 +123,17 @@ export async function runBiAnalyticsTests() {
       userId,
       accessStatus: "GRANTED_GREEN",
       accessMethod: "DNI_KEYPAD",
-      checkInAt: "2026-09-15T08:50:00Z",
+      checkInAt: at(2, 11, 50),
+    },
+    {
+      // Rechazo en ROJO: NO debe contar como asistencia ni en el heatmap
+      id: generateUUIDv7(),
+      tenantId,
+      branchId,
+      userId,
+      accessStatus: "DENIED_RED",
+      accessMethod: "DNI_KEYPAD",
+      checkInAt: at(1, 22, 5),
     },
   ]);
 
@@ -128,7 +146,9 @@ export async function runBiAnalyticsTests() {
     (acc, d) => acc + d.hourlyCounts.reduce((hAcc, c) => hAcc + c, 0),
     0
   );
-  assert(totalHeatmapEntries === 5, "El mapa de calor computó los 5 accesos registrados");
+  assert(totalHeatmapEntries === 5, "El mapa de calor computó los 5 accesos efectivos (excluye rechazos)");
+  const count19 = heatmap.reduce((acc, d) => acc + d.hourlyCounts[19], 0);
+  assert(count19 === 3, "Heatmap usa hora local del gimnasio (22:xx UTC -> 19 hs Argentina)");
 
   // 3. Simular Facturas Cobradas para MRR
   await db.insert(invoices).values([
@@ -160,11 +180,23 @@ export async function runBiAnalyticsTests() {
     },
   ]);
 
+  // MRR = cobros aprobados de los últimos 30 días (un cobro de hace 60 días NO cuenta)
+  const inv1 = generateUUIDv7();
+  await db.insert(invoices).values({
+    id: inv1, tenantId, userId, invoiceNumber: "FAC-BI-03", totalAmount: 75000, paidAmount: 75000,
+    status: "PAID", dueDate: "2026-01-01", issuedAt: nowIso, createdAt: nowIso, updatedAt: nowIso,
+  });
+  await db.insert(paymentTransactions).values([
+    { id: generateUUIDv7(), tenantId, invoiceId: inv1, amount: 35000, paymentMethod: "CASH", status: "APPROVED", createdAt: nowIso },
+    { id: generateUUIDv7(), tenantId, invoiceId: inv1, amount: 40000, paymentMethod: "MERCADO_PAGO_QR", status: "APPROVED", createdAt: nowIso },
+    { id: generateUUIDv7(), tenantId, invoiceId: inv1, amount: 99999, paymentMethod: "CASH", status: "APPROVED", createdAt: new Date(Date.now() - 60 * 86_400_000).toISOString() },
+  ]);
+
   // 4. Probar Dashboard Ejecutivo
   const kpis = await getExecutiveBusinessDashboard(tenantId);
   assert(kpis.totalMembers === 1, "Reporta total de 1 socio en el padrón");
   assert(kpis.activeMembers === 1, "Reporta 1 socio activo");
-  assert(kpis.monthlyRecurringRevenue === 75000, "MRR computa exactamente $75.000 de facturación");
+  assert(kpis.monthlyRecurringRevenue === 75000, "MRR computa exactamente $75.000 cobrados en los últimos 30 días");
   assert(kpis.monthlyAttendancesCount === 5, "Total de asistencias del mes coincide (5 accesos)");
   assert(Boolean(kpis.peakHourDescription), "Describe con texto claro el horario pico");
 

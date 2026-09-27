@@ -3,9 +3,25 @@ import { tenants, branches, users, exercises, routines } from "../src/db/schema"
 import { generateUUIDv7 } from "../src/lib/security/uuid";
 import { hashPassword } from "../src/lib/security/hash";
 import { generateBlindIndex } from "../src/lib/security/encryption";
-import { eq } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
+
+/**
+ * FIX DE SEGURIDAD: las contraseñas de las cuentas reales estaban escritas en el código
+ * (y por lo tanto en el historial de git). Ahora se leen de variables de entorno:
+ *   PROVISION_MASTER_PASSWORD=...  PROVISION_GYM_PASSWORD=...  npx tsx scripts/provision-accounts.ts
+ * IMPORTANTE: las contraseñas anteriores deben considerarse comprometidas y cambiarse.
+ */
+function requiredPassword(envName: string): string {
+  const value = process.env[envName];
+  if (!value || value.length < 10) {
+    throw new Error(`Define ${envName} (mínimo 10 caracteres) antes de ejecutar el aprovisionamiento.`);
+  }
+  return value;
+}
 
 async function main() {
+  const masterPassword = requiredPassword("PROVISION_MASTER_PASSWORD");
+  const gymPassword = requiredPassword("PROVISION_GYM_PASSWORD");
   console.log("🚀 Iniciando aprovisionamiento de cuentas Master y Cliente VIP...");
   const now = new Date().toISOString();
 
@@ -52,11 +68,11 @@ async function main() {
   }
 
   // Crear o actualizar usuario Master
-  const masterPasswordHash = await hashPassword("Onlythresh420");
+  const masterPasswordHash = await hashPassword(masterPassword);
   const masterDniIndex = generateBlindIndex("10000001");
 
   const existingMasterUser = await db.query.users.findFirst({
-    where: eq(users.email, "ojedanicolas1b@gmail.com"),
+    where: and(eq(users.tenantId, masterTenantId), eq(users.email, "ojedanicolas1b@gmail.com")),
   });
 
   if (!existingMasterUser) {
@@ -80,7 +96,7 @@ async function main() {
   } else {
     await db.update(users)
       .set({ passwordHash: masterPasswordHash, role: "SUPERADMIN", updatedAt: now })
-      .where(eq(users.email, "ojedanicolas1b@gmail.com"));
+      .where(eq(users.id, existingMasterUser.id));
     console.log("🔄 Cuenta Master CEO actualizada con nueva contraseña (ojedanicolas1b@gmail.com)");
   }
 
@@ -142,11 +158,11 @@ async function main() {
 
 
   // Crear o actualizar usuario Dueño Gimnasio Libertad
-  const gymPasswordHash = await hashPassword("Libertad12345");
+  const gymPasswordHash = await hashPassword(gymPassword);
   const gymDniIndex = generateBlindIndex("20000002");
 
   const existingGymUser = await db.query.users.findFirst({
-    where: eq(users.email, "nicolaslarrocapf@gmail.com"),
+    where: and(eq(users.tenantId, gymTenantId), eq(users.email, "nicolaslarrocapf@gmail.com")),
   });
 
   if (!existingGymUser) {
@@ -170,7 +186,7 @@ async function main() {
   } else {
     await db.update(users)
       .set({ passwordHash: gymPasswordHash, role: "SUPERADMIN", updatedAt: now })
-      .where(eq(users.email, "nicolaslarrocapf@gmail.com"));
+      .where(eq(users.id, existingGymUser.id));
     console.log("🔄 Cuenta Gimnasio Libertad actualizada con nueva contraseña (nicolaslarrocapf@gmail.com)");
   }
 

@@ -1,10 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { jwtVerify } from "jose";
-import { revokeSession } from "@/lib/auth/tokens";
-
-const REFRESH_SECRET = new TextEncoder().encode(
-  process.env.JWT_REFRESH_SECRET || "f1e2d3c4b5a6f1e2d3c4b5a6f1e2d3c4b5a6f1e2d3c4b5a6f1e2d3c4b5a6f1e2"
-);
+import { revokeSession, refreshSecret } from "@/lib/auth/tokens";
 
 export async function POST(req: NextRequest) {
   try {
@@ -12,7 +8,7 @@ export async function POST(req: NextRequest) {
 
     if (refreshToken) {
       try {
-        const { payload } = await jwtVerify(refreshToken, REFRESH_SECRET);
+        const { payload } = await jwtVerify(refreshToken, refreshSecret());
         const sessionId = payload.sessionId as string;
         if (sessionId) {
           revokeSession(sessionId);

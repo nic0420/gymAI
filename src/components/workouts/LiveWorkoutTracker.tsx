@@ -17,7 +17,7 @@ export function LiveWorkoutTracker({ tenantId, userId }: LiveWorkoutTrackerProps
   >([
     { setNumber: 1, weightKg: 80, repsDone: 10, completed: false, estimated1RM: 106.67 },
     { setNumber: 2, weightKg: 95, repsDone: 8, completed: false, estimated1RM: 120.33 },
-    { setNumber: 3, weightKg: 110, repsDone: 6, completed: false, estimated1RM: 132.0, isPR: true },
+    { setNumber: 3, weightKg: 110, repsDone: 6, completed: false, estimated1RM: 132.0 },
     { setNumber: 4, weightKg: 115, repsDone: 4, completed: false, estimated1RM: 130.33 },
   ]);
 
@@ -37,42 +37,50 @@ export function LiveWorkoutTracker({ tenantId, userId }: LiveWorkoutTrackerProps
   }, [restTimer]);
 
   const handleCompleteSet = (idx: number) => {
-    const updated = [...sets];
-    updated[idx].completed = !updated[idx].completed;
-    const estimated = calculateOneRepMax(updated[idx].weightKg, updated[idx].repsDone);
-    updated[idx].estimated1RM = estimated;
-    
-    // Si supera 130kg lanzamos alerta de PR
-    if (updated[idx].completed && estimated >= 130) {
-      updated[idx].isPR = true;
+    // FIX: antes se mutaban los objetos del estado anterior (updated[idx].x = ...),
+    // lo que en React produce renders inconsistentes. Se crean copias inmutables.
+    const target = sets[idx];
+    const completed = !target.completed;
+    const estimated = calculateOneRepMax(target.weightKg, target.repsDone);
+
+    // FIX: el "récord personal" estaba hardcodeado a ">= 130 kg". Ahora es PR si supera
+    // el mejor 1RM de las otras series completadas de la sesión.
+    const bestOther = sets.reduce(
+      (acc, st, i) => (i !== idx && st.completed ? Math.max(acc, st.estimated1RM) : acc),
+      0
+    );
+    const isPR = completed && estimated > bestOther && estimated > 0;
+
+    setSets(sets.map((st, i) => (i === idx ? { ...st, completed, estimated1RM: estimated, isPR } : st)));
+
+    if (isPR) {
       setPrAlert({ exercise: currentExercise, rm: estimated });
     }
-
-    setSets(updated);
-
-    if (updated[idx].completed) {
+    if (completed) {
       setRestTimer(90); // 90 segundos de descanso
     }
   };
 
   const handleUpdateSet = (idx: number, field: "weightKg" | "repsDone", value: number) => {
-    const updated = [...sets];
-    updated[idx][field] = value;
-    const est = calculateOneRepMax(
-      field === "weightKg" ? value : updated[idx].weightKg,
-      field === "repsDone" ? value : updated[idx].repsDone
+    const safeValue = Number.isFinite(value) && value >= 0 ? value : 0;
+    setSets(
+      sets.map((st, i) => {
+        if (i !== idx) return st;
+        const next = { ...st, [field]: safeValue };
+        return { ...next, estimated1RM: calculateOneRepMax(next.weightKg, next.repsDone) };
+      })
     );
-    updated[idx].estimated1RM = est;
-    setSets(updated);
   };
 
   const handleFinishWorkout = () => {
-    const totalVol = sets.reduce((acc, s) => acc + (s.completed ? s.weightKg * s.repsDone : 0), 0);
-    const max1RM = Math.max(...sets.map((s) => s.estimated1RM));
+    const done = sets.filter((s) => s.completed);
+    const totalVol = done.reduce((acc, s) => acc + s.weightKg * s.repsDone, 0);
+    // FIX: el 1RM máximo incluía series NO completadas
+    const max1RM = done.length ? Math.max(...done.map((s) => s.estimated1RM)) : 0;
     setSessionSummary({
       totalVolumeKg: totalVol,
       max1RM,
-      completedSets: sets.filter((s) => s.completed).length,
+      completedSets: done.length,
     });
     setActiveSession(false);
     setPrAlert(null);

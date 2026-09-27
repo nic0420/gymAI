@@ -54,7 +54,7 @@ export async function runAuthRtrTests() {
 
   // 3. Rotación Exitosa (RTR 1er Ciclo)
   const rotation1 = await rotateRefreshToken(initialRefreshToken);
-  assert(Boolean(rotation1.newAccessToken), "RTR emite nuevo Access Token");
+  assert(rotation1.sessionId === sessionId, "RTR mantiene la familia de sesión (el Access Token lo emite el controller con datos frescos)");
   assert(Boolean(rotation1.newRefreshToken), "RTR emite nuevo Refresh Token");
   assert(
     rotation1.newRefreshToken !== initialRefreshToken,
@@ -63,7 +63,7 @@ export async function runAuthRtrTests() {
 
   // 4. Rotación Exitosa (RTR 2do Ciclo)
   const rotation2 = await rotateRefreshToken(rotation1.newRefreshToken);
-  assert(Boolean(rotation2.newAccessToken), "RTR encadenado funciona correctamente");
+  assert(Boolean(rotation2.newRefreshToken), "RTR encadenado funciona correctamente");
 
   // 5. DETECCIÓN DE ATAQUE POR REUSO
   // Un atacante intenta usar el initialRefreshToken que ya fue consumido

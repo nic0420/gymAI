@@ -1,19 +1,19 @@
 import { NextRequest, NextResponse } from "next/server";
+import { requireAuth, assertSameTenant } from "@/lib/auth/guard";
+import { ATOMIC_PERMISSIONS } from "@/lib/auth/rbac";
 import { getExecutiveBusinessDashboard } from "@/lib/analytics/bi-service";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(req: NextRequest) {
   try {
+    const auth = await requireAuth(req, ATOMIC_PERMISSIONS.FINANCIAL_REPORTS_READ);
+    if (!auth.ok) return auth.response;
+    const { ctx } = auth;
     const { searchParams } = new URL(req.url);
-    const tenantId = searchParams.get("tenantId");
-
-    if (!tenantId) {
-      return NextResponse.json(
-        { error: "MISSING_TENANT", message: "tenantId es requerido" },
-        { status: 400 }
-      );
-    }
+    const mismatch = assertSameTenant(ctx, searchParams.get("tenantId"));
+    if (mismatch) return mismatch;
+    const tenantId = ctx.tenantId;
 
     const dashboard = await getExecutiveBusinessDashboard(tenantId);
 

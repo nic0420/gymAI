@@ -1,5 +1,6 @@
 "use client";
 
+import { apiFetch } from "@/lib/api-client";
 import React, { useState } from "react";
 import { X, UploadCloud, FileSpreadsheet, Check, AlertCircle, RefreshCw, Download } from "lucide-react";
 
@@ -83,7 +84,7 @@ export function BulkMemberImportModal({
     setResultMessage(null);
 
     try {
-      const res = await fetch("/api/v1/users/import-csv", {
+      const res = await apiFetch("/api/v1/users/import-csv", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

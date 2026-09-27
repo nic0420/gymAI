@@ -1,4 +1,5 @@
 import crypto from "node:crypto";
+import { getSecret } from "../config/secrets";
 
 const ALGORITHM = "aes-256-gcm";
 const IV_LENGTH = 12; // 96 bits recomendado para GCM
@@ -8,7 +9,7 @@ const AUTH_TAG_LENGTH = 16; // 128 bits
  * Obtiene la clave maestra (Master Key) de 32 bytes desde las variables de entorno.
  */
 function getMasterKey(): Buffer {
-  const hexKey = process.env.APP_MASTER_KEY || "4f9c2d1b8e7a6f5e4d3c2b1a0f9e8d7c6b5a4f3e2d1c0b9a8f7e6d5c4b3a2f1e";
+  const hexKey = getSecret("APP_MASTER_KEY");
   const key = Buffer.from(hexKey, "hex");
   if (key.length !== 32) {
     throw new Error("APP_MASTER_KEY debe ser una cadena hexadecimal de 64 caracteres (32 bytes)");
@@ -20,7 +21,7 @@ function getMasterKey(): Buffer {
  * Obtiene la sal para índices ciegos (Blind Index Salt)
  */
 function getBlindIndexSalt(): string {
-  return process.env.BLIND_INDEX_SALT || "9a8b7c6d5e4f3a2b1c0d9e8f7a6b5c4d3e2f1a0b9c8d7e6f5a4b3c2d1e0f9a8b";
+  return getSecret("BLIND_INDEX_SALT");
 }
 
 export interface EncryptedPayload {

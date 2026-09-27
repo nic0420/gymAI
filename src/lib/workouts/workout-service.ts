@@ -13,7 +13,8 @@ import {
   CreateRoutineInput,
   LogWorkoutSessionInput,
 } from "@/lib/validations/workout";
-import { eq, and, desc, sql } from "drizzle-orm";
+import { eq, and, sql, inArray, or, isNull } from "drizzle-orm";
+import { users } from "@/db/schema";
 
 import { calculateOneRepMax } from "./epley";
 export { calculateOneRepMax };
@@ -46,6 +47,27 @@ export async function createExercise(input: CreateExerciseInput): Promise<string
 export async function createRoutine(input: CreateRoutineInput): Promise<string> {
   const routineId = generateUUIDv7();
   const nowIso = new Date().toISOString();
+
+  // Validaciones de integridad multi-tenant (antes se podía asignar una rutina a un socio
+  // de otro gimnasio o usar ejercicios privados ajenos)
+  if (input.userId) {
+    const member = await db.query.users.findFirst({
+      where: and(eq(users.id, input.userId), eq(users.tenantId, input.tenantId)),
+      columns: { id: true },
+    });
+    if (!member) throw new Error("MEMBER_NOT_FOUND");
+  }
+  const exerciseIds = Array.from(new Set(input.days.flatMap((d) => d.exercises.map((e) => e.exerciseId))));
+  if (exerciseIds.length > 0) {
+    const found = await db.query.exercises.findMany({
+      where: and(
+        inArray(exercises.id, exerciseIds),
+        or(eq(exercises.tenantId, input.tenantId), isNull(exercises.tenantId))
+      ),
+      columns: { id: true },
+    });
+    if (found.length !== exerciseIds.length) throw new Error("EXERCISE_NOT_FOUND");
+  }
 
   await db.insert(routines).values({
     id: routineId,
@@ -95,16 +117,19 @@ export async function createRoutine(input: CreateRoutineInput): Promise<string> 
  * Clona una Plantilla Maestra a un Socio específico
  */
 export async function cloneRoutineTemplateForUser(params: {
+  tenantId?: string;
   templateId: string;
   userId: string;
   coachId?: string;
   validFrom?: string;
   validUntil?: string;
 }): Promise<string> {
-  const { templateId, userId, coachId, validFrom, validUntil } = params;
+  const { templateId, userId, coachId, validFrom, validUntil, tenantId } = params;
 
   const template = await db.query.routines.findFirst({
-    where: eq(routines.id, templateId),
+    where: tenantId
+      ? and(eq(routines.id, templateId), eq(routines.tenantId, tenantId))
+      : eq(routines.id, templateId),
   });
 
   if (!template) {
@@ -183,6 +208,11 @@ export async function logWorkoutSession(
   // 1. Insertar primero la cabecera del Workout Log para satisfacer la Foreign Key
   // Calculamos el volumen total y procesamos las series
   const preparedSets: any[] = [];
+  // Mejor 1RM por ejercicio: histórico + lo ya levantado en ESTA sesión.
+  // FIX: antes cada serie se comparaba sólo contra el histórico, así que 4 series que
+  // superaban la marca anterior contaban como 4 "récords personales" distintos.
+  const bestSoFar = new Map<string, number>();
+  const prExercises = new Set<string>(); // un récord se cuenta una vez por ejercicio
   for (const s of sets) {
     const estimated1RM = calculateOneRepMax(s.weightKg, s.repsDone);
     const volume = s.weightKg * s.repsDone;
@@ -202,11 +232,13 @@ export async function logWorkoutSession(
         )
       );
 
-    const previousBest1RM = historicalLogs[0]?.max1RM || 0;
+    const historicalBest = historicalLogs[0]?.max1RM || 0;
+    const previousBest1RM = Math.max(historicalBest, bestSoFar.get(s.exerciseId) ?? 0);
     const isPersonalRecord = estimated1RM > previousBest1RM && estimated1RM > 0;
+    bestSoFar.set(s.exerciseId, Math.max(previousBest1RM, estimated1RM));
 
     if (isPersonalRecord) {
-      personalRecordsCount++;
+      prExercises.add(s.exerciseId);
     }
 
     preparedSets.push({
@@ -231,6 +263,8 @@ export async function logWorkoutSession(
       isPR: isPersonalRecord,
     });
   }
+
+  personalRecordsCount = prExercises.size;
 
   // Insertar cabecera del Workout Log con volumen total
   await db.insert(workoutLogs).values({

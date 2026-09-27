@@ -1,15 +1,11 @@
 import { SignJWT, jwtVerify } from "jose";
-import crypto from "node:crypto";
 import { generateUUIDv7 } from "../security/uuid";
 
-// Claves secretas de firma
-const ACCESS_SECRET = new TextEncoder().encode(
-  process.env.JWT_ACCESS_SECRET || "c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4"
-);
+import { getSecret } from "../config/secrets";
 
-const REFRESH_SECRET = new TextEncoder().encode(
-  process.env.JWT_REFRESH_SECRET || "f1e2d3c4b5a6f1e2d3c4b5a6f1e2d3c4b5a6f1e2d3c4b5a6f1e2d3c4b5a6f1e2"
-);
+// Claves secretas de firma (resueltas en tiempo de uso; obligatorias en producción)
+const accessSecret = () => new TextEncoder().encode(getSecret("JWT_ACCESS_SECRET"));
+export const refreshSecret = () => new TextEncoder().encode(getSecret("JWT_REFRESH_SECRET"));
 
 export interface AccessTokenPayload {
   sub: string;       // User ID (UUIDv7)
@@ -62,7 +58,7 @@ export async function generateAccessToken(payload: AccessTokenPayload): Promise<
     .setIssuedAt()
     .setExpirationTime("15m")
     .setJti(generateUUIDv7())
-    .sign(ACCESS_SECRET);
+    .sign(accessSecret());
 }
 
 /**
@@ -100,7 +96,7 @@ export async function createSessionAndRefreshToken(params: {
     .setIssuedAt()
     .setExpirationTime("14d")
     .setJti(tokenId)
-    .sign(REFRESH_SECRET);
+    .sign(refreshSecret());
 
   return { refreshToken, sessionId };
 }
@@ -115,14 +111,14 @@ export async function createSessionAndRefreshToken(params: {
 export async function rotateRefreshToken(
   oldRefreshToken: string
 ): Promise<{
-  newAccessToken: string;
   newRefreshToken: string;
   userId: string;
   tenantId: string;
+  sessionId: string;
 }> {
   let verified;
   try {
-    verified = await jwtVerify(oldRefreshToken, REFRESH_SECRET);
+    verified = await jwtVerify(oldRefreshToken, refreshSecret());
   } catch {
     throw new Error("REFRESH_TOKEN_EXPIRED_OR_INVALID");
   }
@@ -165,22 +161,16 @@ export async function rotateRefreshToken(
     .setIssuedAt()
     .setExpirationTime("14d")
     .setJti(nextTokenId)
-    .sign(REFRESH_SECRET);
+    .sign(refreshSecret());
 
-  const newAccessToken = await generateAccessToken({
-    sub: userId,
-    tenantId,
-    dni: "", // Se popula en el controller buscando los datos actualizados del usuario
-    role: "SOCIO",
-    permissions: [],
-    sessionId,
-  });
-
+  // FIX: antes se emitía aquí un access token con role "SOCIO" y dni vacío,
+  // degradando a cualquier admin tras el primer refresh (15 min). Ahora el
+  // access token lo emite el controller con los datos frescos del usuario.
   return {
-    newAccessToken,
     newRefreshToken,
     userId,
     tenantId,
+    sessionId,
   };
 }
 
@@ -201,7 +191,7 @@ export function revokeSession(sessionId: string): boolean {
  * Valida un Access Token y retorna su contenido verificado.
  */
 export async function verifyAccessToken(token: string): Promise<AccessTokenPayload> {
-  const { payload } = await jwtVerify(token, ACCESS_SECRET);
+  const { payload } = await jwtVerify(token, accessSecret());
   return {
     sub: payload.sub as string,
     tenantId: payload.tenantId as string,
