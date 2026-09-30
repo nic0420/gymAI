@@ -1,5 +1,5 @@
 import { drizzle } from "drizzle-orm/libsql";
-import { createClient, type Client } from "@libsql/client";
+import type { Client } from "@libsql/client";
 import * as schema from "./schema";
 import { initializeDatabase } from "./init";
 import path from "node:path";
@@ -37,23 +37,39 @@ function resolveConnection(): { url: string; authToken?: string } {
 }
 
 let realClient: Client | null = null;
+let clientPromise: Promise<Client> | null = null;
 let isLocalFile = false;
 let readyPromise: Promise<void> | null = null;
 
-function getClient(): Client {
-  if (!realClient) {
-    const connection = resolveConnection();
-    isLocalFile = connection.url.startsWith("file:");
-    realClient = createClient(connection);
+/**
+ * Para bases remotas (Turso) se usa el cliente "web" de libSQL (HTTP puro, sin binarios
+ * nativos): en Vercel el cliente de Node intentaba cargar el módulo nativo de SQLite y la
+ * función fallaba con "Error interno". El cliente con soporte de archivos sólo se carga en local.
+ */
+function getClient(): Promise<Client> {
+  if (!clientPromise) {
+    clientPromise = (async () => {
+      const connection = resolveConnection();
+      isLocalFile = connection.url.startsWith("file:");
+      const mod = isLocalFile ? await import("@libsql/client") : await import("@libsql/client/web");
+      const url = !isLocalFile && connection.url.startsWith("libsql://")
+        ? connection.url.replace(/^libsql:\/\//, "https://")
+        : connection.url;
+      realClient = mod.createClient({ ...connection, url });
+      return realClient;
+    })().catch((err) => {
+      clientPromise = null;
+      throw err;
+    });
   }
-  return realClient;
+  return clientPromise;
 }
 
 /** Crea el esquema (si falta) una sola vez, antes de la primera consulta. */
 export function ensureDatabase(): Promise<void> {
   if (!readyPromise) {
     readyPromise = (async () => {
-      const c = getClient();
+      const c = await getClient();
       if (isLocalFile) {
         await c.execute("PRAGMA journal_mode = WAL");
         await c.execute("PRAGMA busy_timeout = 5000");
@@ -75,23 +91,23 @@ export function ensureDatabase(): Promise<void> {
 const lazyClient = {
   async execute(...args: any[]) {
     await ensureDatabase();
-    return (getClient().execute as any)(...args);
+    return ((await getClient()).execute as any)(...args);
   },
   async executeMultiple(sql: string) {
     await ensureDatabase();
-    return getClient().executeMultiple(sql);
+    return (await getClient()).executeMultiple(sql);
   },
   async batch(...args: any[]) {
     await ensureDatabase();
-    return (getClient().batch as any)(...args);
+    return ((await getClient()).batch as any)(...args);
   },
   async migrate(...args: any[]) {
     await ensureDatabase();
-    return (getClient().migrate as any)(...args);
+    return ((await getClient()).migrate as any)(...args);
   },
   async transaction(...args: any[]) {
     await ensureDatabase();
-    const c = getClient();
+    const c = await getClient();
     const tx = await (c.transaction as any)(...args);
     // En modo archivo, libSQL entrega la conexión actual a la transacción y abre una NUEVA
     // para las consultas siguientes. Los PRAGMA son por conexión: se re-aplican ya mismo.
@@ -102,7 +118,7 @@ const lazyClient = {
     return tx;
   },
   async sync() {
-    return getClient().sync();
+    return (await getClient()).sync();
   },
   close() {
     realClient?.close();
