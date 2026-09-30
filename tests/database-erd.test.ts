@@ -34,38 +34,7 @@ export async function runDatabaseErdTests() {
     }
   }
 
-  // 1. Crear tablas frescas en SQLite local para la suite de pruebas
-  const sqlite = (db as any).session?.client;
-  if (sqlite) {
-    sqlite.exec(`
-      DROP TABLE IF EXISTS webhook_events;
-      DROP TABLE IF EXISTS set_logs;
-      DROP TABLE IF EXISTS workout_logs;
-      DROP TABLE IF EXISTS routine_exercises;
-      DROP TABLE IF EXISTS routine_days;
-      DROP TABLE IF EXISTS routines;
-      DROP TABLE IF EXISTS exercises;
-      DROP TABLE IF EXISTS body_measurements;
-      DROP TABLE IF EXISTS attendances;
-      DROP TABLE IF EXISTS payment_transactions;
-      DROP TABLE IF EXISTS cash_movements;
-      DROP TABLE IF EXISTS cash_shifts;
-      DROP TABLE IF EXISTS invoices;
-      DROP TABLE IF EXISTS subscriptions;
-      DROP TABLE IF EXISTS membership_plans;
-      DROP TABLE IF EXISTS medical_records;
-      DROP TABLE IF EXISTS user_sessions;
-      DROP TABLE IF EXISTS role_permissions;
-      DROP TABLE IF EXISTS permissions;
-      DROP TABLE IF EXISTS users;
-      DROP TABLE IF EXISTS branches;
-      DROP TABLE IF EXISTS tenants;
-    `);
-
-    // Recrear todas las tablas del sistema
-    const { initializeLocalDatabase } = await import("../src/db/init");
-    initializeLocalDatabase(sqlite);
-  }
+  // 1. La suite corre sobre una base temporal nueva (ver tests/setup-env.ts), con el esquema ya creado
 
   const now = new Date().toISOString();
   const testTenantId = generateUUIDv7();

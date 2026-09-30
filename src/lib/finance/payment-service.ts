@@ -61,9 +61,9 @@ export async function processPaymentTransaction(
 ): Promise<PaymentProcessingResult> {
   const { tenantId, invoiceId, cashShiftId, processedByUserId, splits } = input;
 
-  return db.transaction((tx) => {
+  return db.transaction(async (tx) => {
     // 1. Obtener la factura (acotada al tenant)
-    const invoice = tx
+    const invoice = await tx
       .select()
       .from(invoices)
       .where(and(eq(invoices.id, invoiceId), eq(invoices.tenantId, tenantId)))
@@ -87,7 +87,7 @@ export async function processPaymentTransaction(
     const hasCash = splits.some((s) => s.paymentMethod === "CASH");
     if (hasCash) {
       if (!cashShiftId) throw new Error("CASH_SHIFT_REQUIRED");
-      const shift = tx
+      const shift = await tx
         .select()
         .from(cashShifts)
         .where(
@@ -104,7 +104,7 @@ export async function processPaymentTransaction(
     for (const split of splits) {
       const transactionId = generateUUIDv7();
 
-      tx.insert(paymentTransactions)
+      await tx.insert(paymentTransactions)
         .values({
           id: transactionId,
           tenantId,
@@ -121,7 +121,7 @@ export async function processPaymentTransaction(
 
       // Si el pago es en efectivo, impactar como movimiento de ingreso en la caja abierta
       if (split.paymentMethod === "CASH") {
-        tx.insert(cashMovements)
+        await tx.insert(cashMovements)
           .values({
             id: generateUUIDv7(),
             tenantId,
@@ -149,7 +149,7 @@ export async function processPaymentTransaction(
     const remainingAmount = fromCents(Math.max(0, remainingBeforeCents - totalSplitsCents));
     const newInvoiceStatus = remainingAmount === 0 ? "PAID" : "PARTIALLY_PAID";
 
-    tx.update(invoices)
+    await tx.update(invoices)
       .set({
         paidAmount: updatedPaidAmount,
         status: newInvoiceStatus,
@@ -163,14 +163,14 @@ export async function processPaymentTransaction(
 
     // 4. Si la factura quedó 100% saldada (PAID) y está ligada a una suscripción -> ACTIVAR
     if (newInvoiceStatus === "PAID" && invoice.subscriptionId) {
-      const subscription = tx
+      const subscription = await tx
         .select()
         .from(subscriptions)
         .where(and(eq(subscriptions.id, invoice.subscriptionId), eq(subscriptions.tenantId, tenantId)))
         .get();
 
       if (subscription) {
-        const plan = tx
+        const plan = await tx
           .select()
           .from(membershipPlans)
           .where(eq(membershipPlans.id, subscription.planId))
@@ -183,7 +183,7 @@ export async function processPaymentTransaction(
         const base = subscription.endDate > today ? subscription.endDate : today;
         newSubscriptionEndDate = addDaysToDateString(base, durationDays);
 
-        tx.update(subscriptions)
+        await tx.update(subscriptions)
           .set({
             status: "ACTIVE",
             endDate: newSubscriptionEndDate,

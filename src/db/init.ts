@@ -1,12 +1,10 @@
-import Database from "better-sqlite3";
+import type { Client } from "@libsql/client";
 
 /**
- * Inicializa el esquema completo de tablas en SQLite local
+ * Inicializa (idempotente) el esquema completo en SQLite local o Turso (libSQL)
  */
-export function initializeLocalDatabase(sqlite: Database.Database): void {
-  if (!sqlite) return;
-
-  sqlite.exec(`
+export async function initializeDatabase(client: Client): Promise<void> {
+  await client.executeMultiple(`
     CREATE TABLE IF NOT EXISTS tenants (
       id TEXT PRIMARY KEY,
       name TEXT NOT NULL,
@@ -334,7 +332,7 @@ export function initializeLocalDatabase(sqlite: Database.Database): void {
 
   for (const stmt of indexStatements) {
     try {
-      sqlite.exec(stmt);
+      await client.execute(stmt);
     } catch (err: any) {
       console.warn(`[db:init] No se pudo crear índice (¿datos duplicados existentes?): ${stmt} -> ${err?.message}`);
     }

@@ -73,8 +73,8 @@ export async function POST(req: NextRequest) {
     // 3. Insertar Tenant, Sucursal y SuperAdmin en UNA transacción atómica
     // (FIX: antes eran 3 inserts sueltos; un fallo intermedio dejaba un gimnasio sin admin
     // y con el slug "ocupado" para siempre)
-    db.transaction((tx) => {
-      tx.insert(tenants).values({
+    await db.transaction(async (tx) => {
+      await tx.insert(tenants).values({
         id: tenantId,
         name: tenantName,
         slug: tenantSlug,
@@ -83,7 +83,7 @@ export async function POST(req: NextRequest) {
         updatedAt: now,
       }).run();
 
-      tx.insert(branches).values({
+      await tx.insert(branches).values({
         id: branchId,
         tenantId: tenantId,
         name: branchName || "Sede Central",
@@ -92,7 +92,7 @@ export async function POST(req: NextRequest) {
         updatedAt: now,
       }).run();
 
-      tx.insert(users).values({
+      await tx.insert(users).values({
         id: adminId,
         tenantId: tenantId,
         dni: adminDni,

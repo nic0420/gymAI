@@ -13,6 +13,7 @@
     "test": "tsx tests/run-all-tests.ts"
   },
   "dependencies": {
+    "@libsql/client": "^0.15.15",
     "clsx": "^2.1.1",
     "drizzle-orm": "^0.33.0",
     "jose": "^5.9.6",
@@ -28,8 +29,6 @@
     "@types/react": "^18.3.5",
     "@types/react-dom": "^18.3.0",
     "autoprefixer": "^10.4.20",
-    "better-sqlite3": "^11.3.0",
-    "@types/better-sqlite3": "^7.6.11",
     "drizzle-kit": "^0.24.2",
     "postcss": "^8.4.45",
     "tailwindcss": "^3.4.11",
