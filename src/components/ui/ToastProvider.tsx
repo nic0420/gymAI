@@ -1,5 +1,6 @@
 "use client";
 
+import { CircleCheck, CircleX, Info, TriangleAlert, X } from "lucide-react";
 import React, { createContext, useContext, useState, useCallback } from "react";
 import { soundEffects } from "@/lib/kiosk/sound-effects";
 
@@ -86,11 +87,11 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
                 : "bg-slate-900/90 border-slate-700 text-slate-100"
             }`}
           >
-            <span className="text-xl">
-              {t.type === "success" && "✅"}
-              {t.type === "error" && "❌"}
-              {t.type === "warning" && "⚠️"}
-              {t.type === "info" && "ℹ️"}
+            <span className="mt-0.5 shrink-0" aria-hidden>
+              {t.type === "success" && <CircleCheck className="h-5 w-5 text-emerald-400" />}
+              {t.type === "error" && <CircleX className="h-5 w-5 text-rose-400" />}
+              {t.type === "warning" && <TriangleAlert className="h-5 w-5 text-amber-400" />}
+              {t.type === "info" && <Info className="h-5 w-5 text-volt-400" />}
             </span>
             <div className="flex-1">
               <h5 className="font-bold text-sm text-white">{t.title}</h5>
@@ -98,9 +99,10 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
             </div>
             <button
               onClick={() => removeToast(t.id)}
-              className="text-xs opacity-60 hover:opacity-100 p-1"
+              className="opacity-60 hover:opacity-100 p-1"
+              aria-label="Cerrar aviso"
             >
-              ✕
+              <X className="h-4 w-4" />
             </button>
           </div>
         ))}

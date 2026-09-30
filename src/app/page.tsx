@@ -46,6 +46,8 @@ import { PublicLandingPage } from "@/components/landing/PublicLandingPage";
 import { LoginModal } from "@/components/auth/LoginModal";
 import { SaaSSubscriptionModal } from "@/components/billing/SaaSSubscriptionModal";
 import { ToastProvider, useToast } from "@/components/ui/ToastProvider";
+import { SpotterLogo } from "@/components/brand/SpotterLogo";
+import { BRAND } from "@/lib/brand";
 
 export default function HomePage() {
   return (
@@ -62,7 +64,7 @@ function HomeContent() {
   const [viewMode, setViewMode] = useState<"landing" | "app">("landing");
   const [sessionReady, setSessionReady] = useState(false);
   const [activeTab, setActiveTab] = useState<
-    "checkin" | "members" | "finance" | "workouts" | "live_tracker" | "analytics" | "architecture" | "security"
+    "checkin" | "members" | "finance" | "workouts" | "live_tracker" | "analytics"
   >("checkin");
 
   // FIX: "demo-tenant-id"/"demo-branch-id" no existían en la BD -> toda operación fallaba por FK.
@@ -188,124 +190,87 @@ function HomeContent() {
     );
   }
 
+  const TABS: { id: typeof activeTab; label: string; icon: React.ReactNode }[] = [
+    { id: "checkin", label: "Recepción", icon: <QrCode className="w-4 h-4" aria-hidden /> },
+    { id: "members", label: "Socios", icon: <Users className="w-4 h-4" aria-hidden /> },
+    { id: "finance", label: "Caja y cobros", icon: <DollarSign className="w-4 h-4" aria-hidden /> },
+    { id: "workouts", label: "Rutinas", icon: <Dumbbell className="w-4 h-4" aria-hidden /> },
+    { id: "live_tracker", label: "Entreno en vivo", icon: <Flame className="w-4 h-4" aria-hidden /> },
+    { id: "analytics", label: "Números", icon: <BarChart3 className="w-4 h-4" aria-hidden /> },
+  ];
+
   return (
-    <main className="min-h-screen bg-zinc-950 text-zinc-100 flex flex-col selection:bg-blue-500 selection:text-white">
-      {/* Login Modal */}
+    <main className="min-h-screen bg-ink text-graphite-100 flex flex-col">
       <LoginModal
         isOpen={isLoginOpen}
         onClose={() => setIsLoginOpen(false)}
         onLoginSuccess={handleLoginSuccess}
       />
 
-      {/* SaaS Subscription & Bank Transfer Modal */}
       <SaaSSubscriptionModal
         isOpen={isSubModalOpen}
         onClose={() => setIsSubModalOpen(false)}
         gymName={currentUser.tenantName}
       />
 
-      {/* Touch Kiosk Overlay Mode */}
       {isKioskOpen && (
         <TouchKioskTerminal
           tenantId={demoTenantId}
           branchId={demoBranchId}
+          gymName={currentUser.tenantName}
           onClose={() => setIsKioskOpen(false)}
         />
       )}
 
-      {/* Guided Tour Modal */}
-      <GuidedTourModal
-        isOpen={isTourOpen}
-        tourId={selectedTour}
-        onClose={() => setIsTourOpen(false)}
-      />
+      <GuidedTourModal isOpen={isTourOpen} tourId={selectedTour} onClose={() => setIsTourOpen(false)} />
 
-      {/* Enterprise App Header / Navbar */}
-      <header className="border-b border-zinc-800/80 bg-zinc-950/80 backdrop-blur-xl sticky top-0 z-40">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-4">
-          {/* Brand & Tenant Switcher */}
-          <div className="flex items-center gap-4">
-            <button
-              onClick={() => setViewMode("landing")}
-              className="flex items-center gap-2.5 group"
-              title="Volver a Landing Comercial"
-            >
-              <div className="w-9 h-9 rounded-xl bg-blue-600 flex items-center justify-center text-white font-black text-sm shadow-lg shadow-blue-600/25 group-hover:scale-105 transition-transform">
-                <Zap className="w-5 h-5 text-white" />
-              </div>
-              <div className="text-left hidden sm:block">
-                <span className="text-sm font-black tracking-tight text-white flex items-center gap-1.5">
-                  GymAI <span className="text-[10px] font-mono font-bold text-blue-400 bg-blue-500/10 px-1.5 py-0.5 rounded border border-blue-500/20">ENTERPRISE</span>
-                </span>
-                <p className="text-[10px] text-zinc-400">{currentUser.tenantName}</p>
-              </div>
+      {/* ============================================================ BARRA SUPERIOR */}
+      <header className="sticky top-0 z-40 border-b border-graphite-800 bg-ink/95 backdrop-blur-md">
+        <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-4 px-4 sm:px-6">
+          <div className="flex min-w-0 items-center gap-5">
+            <button onClick={() => setViewMode("landing")} title="Ir al sitio de SpotterApp" className="shrink-0">
+              <SpotterLogo size="sm" />
             </button>
 
-            {/* Tenant Selector Dropdown */}
-            <div className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-xl bg-zinc-900 border border-zinc-800 text-xs text-zinc-300">
-              <Building2 className="w-3.5 h-3.5 text-blue-400" />
-              {/* FIX: antes había 3 sedes ficticias fijas que no cambiaban nada; ahora son las sedes reales */}
-              <select
-                aria-label="Seleccionar Sucursal Activa"
-                value={demoBranchId}
-                onChange={(e) => setDemoBranchId(e.target.value)}
-                className="bg-transparent text-zinc-200 text-xs font-semibold focus:outline-none cursor-pointer pr-2"
-              >
-                {branchOptions.length === 0 && (
-                  <option value="" className="bg-zinc-900 text-zinc-200">Sin sedes configuradas</option>
-                )}
-                {branchOptions.map((b) => (
-                  <option key={b.id} value={b.id} className="bg-zinc-900 text-zinc-200">
-                    {b.name}
-                  </option>
-                ))}
-              </select>
+            <span className="hidden h-8 w-px bg-graphite-800 md:block" aria-hidden />
+
+            <div className="hidden min-w-0 items-center gap-3 md:flex">
+              <div className="min-w-0">
+                <p className="label-industrial text-graphite-500">Gimnasio</p>
+                <p className="truncate text-sm font-semibold text-graphite-50">{currentUser.tenantName}</p>
+              </div>
+              <label className="flex items-center gap-2 rounded-md border border-graphite-700 bg-graphite-900 px-2.5 py-1.5">
+                <Building2 className="h-3.5 w-3.5 text-volt-400" aria-hidden />
+                <span className="sr-only">Sede activa</span>
+                <select
+                  value={demoBranchId}
+                  onChange={(e) => setDemoBranchId(e.target.value)}
+                  className="cursor-pointer bg-transparent pr-1 text-xs font-semibold text-graphite-100 focus:outline-none"
+                >
+                  {branchOptions.length === 0 && (
+                    <option value="" className="bg-graphite-900">Sin sedes configuradas</option>
+                  )}
+                  {branchOptions.map((b) => (
+                    <option key={b.id} value={b.id} className="bg-graphite-900">
+                      {b.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
             </div>
           </div>
 
-          {/* Quick Action Badges & Controls */}
-          <div className="flex items-center gap-2.5 text-xs font-medium">
-            {/* Pagar / Renovar Licencia */}
+          <div className="flex items-center gap-1.5 sm:gap-2">
             <button
-              onClick={() => setIsSubModalOpen(true)}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 transition-all text-xs font-semibold"
-              title="Ver datos de transferencia bancaria y suscripción"
+              id="btn-launch-kiosk"
+              onClick={() => setIsKioskOpen(true)}
+              className="inline-flex h-9 items-center gap-2 rounded-md bg-volt-400 px-3.5 text-xs font-bold uppercase tracking-wide text-ink transition-colors hover:bg-volt-300"
+              title="Abrir kiosco de autoservicio"
             >
-              <CreditCard className="w-3.5 h-3.5 text-emerald-400" />
-              <span className="hidden sm:inline">Pagar Suscripción</span>
+              <Tv className="h-4 w-4" aria-hidden />
+              <span className="hidden sm:inline">Kiosco</span>
             </button>
 
-            {/* Cerrar sesión */}
-            <button
-              onClick={handleLogout}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-zinc-300 hover:text-white border border-zinc-800/80 transition-all text-xs font-semibold"
-              title="Cerrar sesión"
-            >
-              <LogOut className="w-3.5 h-3.5 text-rose-400" />
-              <span className="hidden md:inline">Salir</span>
-            </button>
-
-            {/* Login / Cambiar Cuenta */}
-            <button
-              onClick={() => setIsLoginOpen(true)}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-zinc-300 hover:text-white border border-zinc-800/80 transition-all text-xs font-semibold"
-              title="Cambiar de cuenta o iniciar sesión"
-            >
-              <KeyRound className="w-3.5 h-3.5 text-blue-400" />
-              <span className="hidden md:inline">Cambiar Cuenta</span>
-            </button>
-
-            {/* View Switcher: Landing */}
-            <button
-              onClick={() => setViewMode("landing")}
-              className="hidden lg:flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-zinc-900/60 hover:bg-zinc-900 text-zinc-400 hover:text-zinc-200 border border-zinc-800/80 transition-all text-xs font-semibold"
-            >
-              <Globe className="w-3.5 h-3.5 text-blue-400" />
-              <span>Landing B2B</span>
-            </button>
-
-
-            {/* Launch Guided Tour */}
             <button
               id="btn-help-tour"
               onClick={() => {
@@ -318,254 +283,110 @@ function HomeContent() {
                 );
                 setIsTourOpen(true);
               }}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-zinc-300 hover:text-white transition-all text-xs font-semibold"
-              title="Iniciar Tour Guiado Interactivo"
+              className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-graphite-700 text-graphite-300 hover:border-graphite-500 hover:text-graphite-50"
+              title="Tour guiado"
+              aria-label="Tour guiado"
             >
-              <HelpCircle className="w-3.5 h-3.5 text-blue-400" />
-              <span className="hidden sm:inline">Tour Guiado</span>
+              <HelpCircle className="h-4 w-4" aria-hidden />
             </button>
 
-            {/* Launch Touch Kiosk Mode */}
             <button
-              id="btn-launch-kiosk"
-              onClick={() => setIsKioskOpen(true)}
-              className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold transition-all shadow-md shadow-blue-600/20 text-xs"
-              title="Abrir Modo Kiosco Táctil"
+              onClick={() => setIsSubModalOpen(true)}
+              className="hidden h-9 items-center gap-2 rounded-md border border-graphite-700 px-3 text-xs font-semibold text-graphite-200 hover:border-graphite-500 lg:inline-flex"
+              title="Datos para pagar la licencia"
             >
-              <Tv className="w-3.5 h-3.5" />
-              <span>Kiosco Táctil</span>
+              <CreditCard className="h-4 w-4" aria-hidden />
+              Licencia
             </button>
 
-            {/* User Profile Avatar */}
-            <div className="flex items-center gap-2 pl-2 border-l border-zinc-800">
-              <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-500 flex items-center justify-center font-bold text-white text-xs shadow-inner">
+            <div className="ml-1 flex items-center gap-2.5 border-l border-graphite-800 pl-3">
+              <div
+                className="flex h-9 w-9 items-center justify-center rounded-md bg-graphite-800 font-display text-sm font-bold text-graphite-50"
+                aria-hidden
+              >
                 {currentUser.initials}
               </div>
-              <div className="hidden xl:block text-left text-[11px] leading-tight">
-                <span className="font-bold text-zinc-200 block truncate max-w-[120px]">{currentUser.name}</span>
-                <span className="text-zinc-500 text-[10px]">{currentUser.role}</span>
+              <div className="hidden text-left leading-tight xl:block">
+                <span className="block max-w-[140px] truncate text-xs font-semibold text-graphite-100">{currentUser.name}</span>
+                <span className="label-industrial text-[10px] text-graphite-500">{currentUser.role}</span>
               </div>
+              <button
+                onClick={() => setIsLoginOpen(true)}
+                className="hidden h-9 w-9 items-center justify-center rounded-md text-graphite-400 hover:text-graphite-50 md:inline-flex"
+                title="Cambiar de cuenta"
+                aria-label="Cambiar de cuenta"
+              >
+                <KeyRound className="h-4 w-4" aria-hidden />
+              </button>
+              <button
+                onClick={handleLogout}
+                className="inline-flex h-9 w-9 items-center justify-center rounded-md text-graphite-400 hover:text-rose-400"
+                title="Cerrar sesión"
+                aria-label="Cerrar sesión"
+              >
+                <LogOut className="h-4 w-4" aria-hidden />
+              </button>
             </div>
           </div>
         </div>
+
+        {/* Pestañas */}
+        <nav className="mx-auto max-w-7xl px-4 sm:px-6" aria-label="Secciones del sistema">
+          <div className="no-scrollbar -mb-px flex gap-1 overflow-x-auto">
+            {TABS.map((tab) => {
+              const active = activeTab === tab.id;
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                  aria-current={active ? "page" : undefined}
+                  className={`inline-flex h-11 shrink-0 items-center gap-2 border-b-2 px-3.5 text-sm font-semibold transition-colors ${
+                    active
+                      ? "border-volt-400 text-graphite-50"
+                      : "border-transparent text-graphite-400 hover:text-graphite-100"
+                  }`}
+                >
+                  <span className={active ? "text-volt-400" : ""}>{tab.icon}</span>
+                  {tab.label}
+                </button>
+              );
+            })}
+          </div>
+        </nav>
       </header>
 
+      {/* ============================================================ CONTENIDO */}
+      <section className="mx-auto w-full max-w-7xl flex-1 px-4 py-8 sm:px-6">
+        {activeTab === "checkin" && (
+          <CheckInTerminal tenantId={demoTenantId} branchId={demoBranchId} gymName={currentUser.tenantName} />
+        )}
 
-      {/* Navigation Sub-Header (Tabs) */}
-      <section className="border-b border-zinc-800/80 bg-zinc-950/60 pt-4 pb-3 px-4 sm:px-6 sticky top-16 z-30 backdrop-blur-md">
-        <div className="max-w-7xl mx-auto">
-          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar">
-            <button
-              onClick={() => setActiveTab("checkin")}
-              className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-all ${
-                activeTab === "checkin"
-                  ? "bg-blue-600 text-white shadow-lg shadow-blue-600/20 font-bold"
-                  : "bg-zinc-900/60 text-zinc-400 hover:text-zinc-200 border border-zinc-800/80"
-              }`}
-            >
-              <QrCode className="w-3.5 h-3.5" />
-              <span>Check-in Recepción</span>
-            </button>
+        {activeTab === "members" && <MemberList tenantId={demoTenantId} gymName={currentUser.tenantName} />}
 
-            <button
-              onClick={() => setActiveTab("members")}
-              className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-all ${
-                activeTab === "members"
-                  ? "bg-blue-600 text-white shadow-lg shadow-blue-600/20 font-bold"
-                  : "bg-zinc-900/60 text-zinc-400 hover:text-zinc-200 border border-zinc-800/80"
-              }`}
-            >
-              <Users className="w-3.5 h-3.5" />
-              <span>Socios & Ficha Médica</span>
-            </button>
-
-            <button
-              onClick={() => setActiveTab("finance")}
-              className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-all ${
-                activeTab === "finance"
-                  ? "bg-blue-600 text-white shadow-lg shadow-blue-600/20 font-bold"
-                  : "bg-zinc-900/60 text-zinc-400 hover:text-zinc-200 border border-zinc-800/80"
-              }`}
-            >
-              <DollarSign className="w-3.5 h-3.5" />
-              <span>Finanzas & Arqueo Ciego</span>
-            </button>
-
-            <button
-              onClick={() => setActiveTab("workouts")}
-              className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-all ${
-                activeTab === "workouts"
-                  ? "bg-blue-600 text-white shadow-lg shadow-blue-600/20 font-bold"
-                  : "bg-zinc-900/60 text-zinc-400 hover:text-zinc-200 border border-zinc-800/80"
-              }`}
-            >
-              <Dumbbell className="w-3.5 h-3.5" />
-              <span>Workout Builder</span>
-            </button>
-
-            <button
-              onClick={() => setActiveTab("live_tracker")}
-              className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-all ${
-                activeTab === "live_tracker"
-                  ? "bg-blue-600 text-white shadow-lg shadow-blue-600/20 font-bold"
-                  : "bg-zinc-900/60 text-zinc-400 hover:text-zinc-200 border border-zinc-800/80"
-              }`}
-            >
-              <Flame className="w-3.5 h-3.5" />
-              <span>Live Tracker (1RM Epley)</span>
-            </button>
-
-            <button
-              onClick={() => setActiveTab("analytics")}
-              className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-all ${
-                activeTab === "analytics"
-                  ? "bg-blue-600 text-white shadow-lg shadow-blue-600/20 font-bold"
-                  : "bg-zinc-900/60 text-zinc-400 hover:text-zinc-200 border border-zinc-800/80"
-              }`}
-            >
-              <BarChart3 className="w-3.5 h-3.5" />
-              <span>Business Intelligence & Heatmap</span>
-            </button>
-
-            <button
-              onClick={() => setActiveTab("architecture")}
-              className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-all ${
-                activeTab === "architecture"
-                  ? "bg-blue-600 text-white shadow-lg shadow-blue-600/20 font-bold"
-                  : "bg-zinc-900/60 text-zinc-400 hover:text-zinc-200 border border-zinc-800/80"
-              }`}
-            >
-              <Layers className="w-3.5 h-3.5" />
-              <span>Arquitectura</span>
-            </button>
-
-            <button
-              onClick={() => setActiveTab("security")}
-              className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-all ${
-                activeTab === "security"
-                  ? "bg-blue-600 text-white shadow-lg shadow-blue-600/20 font-bold"
-                  : "bg-zinc-900/60 text-zinc-400 hover:text-zinc-200 border border-zinc-800/80"
-              }`}
-            >
-              <ShieldCheck className="w-3.5 h-3.5" />
-              <span>Seguridad</span>
-            </button>
-          </div>
-        </div>
-      </section>
-
-      {/* Main Workspace Container */}
-      <section className="max-w-7xl mx-auto px-4 sm:px-6 py-8 flex-1 w-full">
-        {/* TAB 1: Check-in Recepción */}
-        {activeTab === "checkin" && <CheckInTerminal tenantId={demoTenantId} branchId={demoBranchId} />}
-
-        {/* TAB 2: Socios & Ficha Médica Cifrada */}
-        {activeTab === "members" && <MemberList tenantId={demoTenantId} />}
-
-        {/* TAB 3: Finanzas, Facturas & Arqueo Ciego */}
         {activeTab === "finance" && (
-          <div className="space-y-8">
+          <div className="space-y-10">
             <CashRegisterView tenantId={demoTenantId} branchId={demoBranchId} />
-            <div className="pt-4 border-t border-zinc-800">
-              <InvoicesTable tenantId={demoTenantId} branchId={demoBranchId} />
+            <div className="border-t border-graphite-800 pt-8">
+              <InvoicesTable tenantId={demoTenantId} branchId={demoBranchId} gymName={currentUser.tenantName} />
             </div>
           </div>
         )}
 
-        {/* TAB 4: Workout Builder */}
         {activeTab === "workouts" && <WorkoutBuilder tenantId={demoTenantId} />}
 
-        {/* TAB 5: Live Tracker (1RM Epley) */}
-        {activeTab === "live_tracker" && (
-          <LiveWorkoutTracker tenantId={demoTenantId} userId={currentUser.id} />
-        )}
+        {activeTab === "live_tracker" && <LiveWorkoutTracker tenantId={demoTenantId} userId={currentUser.id} />}
 
-        {/* TAB 6: Business Intelligence & Heatmap 7x24 */}
         {activeTab === "analytics" && <BusinessDashboard tenantId={demoTenantId} />}
-
-        {/* TAB 7: Arquitectura */}
-        {activeTab === "architecture" && (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="glass-panel p-6 rounded-3xl border border-zinc-800">
-              <h3 className="text-base font-bold text-white mb-2 flex items-center gap-2">
-                <Database className="w-5 h-5 text-blue-400" />
-                Multi-Tenancy & Blind Indexes
-              </h3>
-              <p className="text-xs text-zinc-400 leading-relaxed">
-                Aislamiento estricto por <code className="text-blue-400">tenant_id</code> con PKs UUIDv7 ordenables cronológicamente y búsqueda por Blind Index en tiempo constante $O(1)$.
-              </p>
-            </div>
-
-            <div className="glass-panel p-6 rounded-3xl border border-zinc-800">
-              <h3 className="text-base font-bold text-white mb-2 flex items-center gap-2">
-                <DollarSign className="w-5 h-5 text-emerald-400" />
-                Double-Entry Ledger & Splits
-              </h3>
-              <p className="text-xs text-zinc-400 leading-relaxed">
-                Cobros mixtos (Efectivo + MP QR/Tarjetas) con reactivación automática de membresías y Arqueo Ciego de caja diaria contra desvíos.
-              </p>
-            </div>
-
-            <div className="glass-panel p-6 rounded-3xl border border-zinc-800">
-              <h3 className="text-base font-bold text-white mb-2 flex items-center gap-2">
-                <Activity className="w-5 h-5 text-indigo-400" />
-                Check-in en Milisegundos
-              </h3>
-              <p className="text-xs text-zinc-400 leading-relaxed">
-                Motor de semáforo (Verde, Amarillo, Rojo) con latencia promedio &lt;2ms y soporte de contingencia Offline-First con IndexedDB.
-              </p>
-            </div>
-          </div>
-        )}
-
-        {/* TAB 8: Seguridad */}
-        {activeTab === "security" && (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="glass-panel p-6 rounded-3xl border border-zinc-800">
-              <h3 className="text-base font-bold text-white mb-3 flex items-center gap-2">
-                <Lock className="w-5 h-5 text-emerald-400" />
-                Envelope Encryption (AES-256-GCM)
-              </h3>
-              <p className="text-xs text-zinc-400 leading-relaxed mb-4">
-                Protección criptográfica para antecedentes médicos y alergias en la ficha médica de cada socio.
-              </p>
-              <div className="p-3 bg-zinc-950 rounded-xl font-mono text-[11px] text-zinc-400 border border-zinc-800">
-                Formato: <span className="text-emerald-400">enc:v1:&lt;iv&gt;:&lt;authTag&gt;:&lt;cipherText&gt;</span>
-              </div>
-            </div>
-
-            <div className="glass-panel p-6 rounded-3xl border border-zinc-800">
-              <h3 className="text-base font-bold text-white mb-3 flex items-center gap-2">
-                <KeyRound className="w-5 h-5 text-blue-400" />
-                Refresh Token Rotation (RTR)
-              </h3>
-              <p className="text-xs text-zinc-400 leading-relaxed mb-4">
-                Rotación de tokens de 14 días con detección inmediata de reúso y revocación preventiva de sesión.
-              </p>
-              <div className="p-3 bg-zinc-950 rounded-xl font-mono text-[11px] text-zinc-400 border border-zinc-800">
-                Cookie: <span className="text-blue-400">HttpOnly, Secure, SameSite=Strict</span>
-              </div>
-            </div>
-          </div>
-        )}
       </section>
 
-      {/* Footer */}
-      <footer className="border-t border-zinc-800/80 py-6 px-6 bg-zinc-950 text-center text-xs text-zinc-500">
-        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-3">
-          <span>GymAI Enterprise SaaS Platform • Multi-Tenant &amp; Offline-First</span>
-          <div className="flex items-center gap-4 text-zinc-400">
-            <button onClick={() => setViewMode("landing")} className="hover:text-white">
-              Landing Pública
-            </button>
-            <span>•</span>
-            <button onClick={() => setIsKioskOpen(true)} className="hover:text-emerald-400">
-              Kiosco Auto-Atención
-            </button>
-          </div>
+      <footer className="border-t border-graphite-800 px-6 py-5 text-xs text-graphite-500">
+        <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-3 sm:flex-row">
+          <span className="label-industrial">SpotterApp · {BRAND.tagline}</span>
+          <button onClick={() => setViewMode("landing")} className="hover:text-graphite-200">
+            Sitio de SpotterApp
+          </button>
         </div>
       </footer>
     </main>
   );
 }
-

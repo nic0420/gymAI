@@ -21,11 +21,12 @@ import type { CheckInResult } from "@/lib/attendance/checkin-engine";
 import { generateWhatsAppLink } from "@/lib/whatsapp/whatsapp-helper";
 
 interface CheckInTerminalProps {
+  gymName?: string;
   tenantId: string;
   branchId: string;
 }
 
-export function CheckInTerminal({ tenantId, branchId }: CheckInTerminalProps) {
+export function CheckInTerminal({ gymName = "tu gimnasio", tenantId, branchId }: CheckInTerminalProps) {
   const [dni, setDni] = useState("");
   const [loading, setLoading] = useState(false);
   const [isOffline, setIsOffline] = useState(false);
@@ -148,7 +149,7 @@ export function CheckInTerminal({ tenantId, branchId }: CheckInTerminalProps) {
                 value={dni}
                 onChange={(e) => setDni(e.target.value.replace(/\D/g, ""))}
                 placeholder="Ingresar DNI..."
-                className="w-full h-16 px-6 bg-slate-950/80 border-2 border-slate-700/80 focus:border-emerald-400 rounded-2xl text-2xl md:text-3xl font-mono font-bold text-center tracking-widest text-white outline-none transition-all placeholder:text-slate-600 focus:shadow-[0_0_25px_rgba(16,185,129,0.2)]"
+                className="w-full h-16 px-6 bg-slate-950/80 border-2 border-slate-700/80 focus:border-volt-400 rounded-2xl text-2xl md:text-3xl font-mono font-bold text-center tracking-widest text-white outline-none transition-colors placeholder:text-slate-600"
                 maxLength={10}
               />
               <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 font-mono text-sm hidden sm:block">
@@ -196,7 +197,7 @@ export function CheckInTerminal({ tenantId, branchId }: CheckInTerminalProps) {
             <button
               type="submit"
               disabled={loading || dni.length < 5}
-              className="w-full h-14 rounded-2xl bg-gradient-to-r from-emerald-500 via-teal-500 to-emerald-400 hover:from-emerald-400 hover:to-teal-300 text-black font-extrabold text-base tracking-wide uppercase transition-all shadow-lg shadow-emerald-500/20 flex items-center justify-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed active:scale-[0.99]"
+              className="w-full h-14 rounded-2xl bg-volt-400 hover:bg-volt-300 text-black font-extrabold text-base tracking-wide uppercase transition-all shadow-lg shadow-emerald-500/20 flex items-center justify-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed active:scale-[0.99]"
             >
               {loading ? (
                 <div className="w-6 h-6 border-3 border-black border-t-transparent rounded-full animate-spin"></div>
@@ -252,7 +253,7 @@ export function CheckInTerminal({ tenantId, branchId }: CheckInTerminalProps) {
                 </span>
               </div>
               <span className="text-xs font-mono text-slate-400 bg-black/40 px-2.5 py-1 rounded-lg">
-                ⚡ {lastResult.executionTimeMs}ms
+                {lastResult.executionTimeMs} ms
               </span>
             </div>
 
@@ -283,10 +284,10 @@ export function CheckInTerminal({ tenantId, branchId }: CheckInTerminalProps) {
                 <div className="p-3.5 rounded-2xl bg-black/40 border border-white/5 text-sm">
                   <p className="text-white font-medium">{lastResult.message}</p>
                   {lastResult.warningReason && (
-                    <p className="text-xs text-amber-300 mt-1">⚠️ {lastResult.warningReason}</p>
+                    <p className="text-xs text-amber-300 mt-1">{lastResult.warningReason}</p>
                   )}
                   {lastResult.denialReason && (
-                    <p className="text-xs text-rose-300 mt-1">🚫 {lastResult.denialReason}</p>
+                    <p className="text-xs text-rose-300 mt-1">{lastResult.denialReason}</p>
                   )}
                 </div>
 
@@ -322,7 +323,7 @@ export function CheckInTerminal({ tenantId, branchId }: CheckInTerminalProps) {
                         ? "DEBT_REMINDER"
                         : "DUE_SOON",
                       dueDate: lastResult.subscription?.endDate,
-                      gymName: "GymAI",
+                      gymName,
                     })}
                     target="_blank"
                     rel="noopener noreferrer"

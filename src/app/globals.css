@@ -2,78 +2,176 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ==========================================================================
+   SpotterApp — tokens (Industrial oscuro)
+   ========================================================================== */
 :root {
-  --background: #09090b;
-  --foreground: #fafafa;
-  --card: #18181b;
-  --card-border: #27272a;
-  --brand: #2563eb;
-  --brand-glow: rgba(37, 99, 235, 0.25);
-  --accent: #38bdf8;
-  --danger: #f43f5e;
-  --warning: #f59e0b;
-  --success: #10b981;
+  --ink: #0e0e0c;
+  --surface: #181816;
+  --surface-2: #1f1f1c;
+  --line: #2f2f2a;
+  --line-strong: #43433c;
+  --text: #f1f1ea;
+  --text-muted: #a3a397;
+  --volt: #e8ff3a;
+  --volt-ink: #0e0e0c;
+  --go: #3bd67f;
+  --warn: #f5a524;
+  --stop: #f2555a;
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  color-scheme: dark;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
 }
 
 body {
-  background-color: var(--background);
-  color: var(--foreground);
-  font-family: -apple-system, BlinkMacSystemFont, "Geist", "Inter", "Segoe UI", Roboto, sans-serif;
+  background-color: var(--ink);
+  color: var(--text);
+  font-family: var(--font-body), system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  font-feature-settings: "ss01", "tnum" 0;
 }
 
-/* Glassmorphism & Surface Utilities */
+h1,
+h2,
+h3 {
+  font-family: var(--font-display), var(--font-body), sans-serif;
+  letter-spacing: -0.01em;
+  text-wrap: balance;
+}
+
+h1,
+h2 {
+  text-transform: uppercase;
+  line-height: 0.95;
+}
+
+p {
+  text-wrap: pretty;
+}
+
+/* Números tabulares en montos, DNI y métricas */
+.font-mono,
+.tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+::selection {
+  background: var(--volt);
+  color: var(--volt-ink);
+}
+
+/* Foco visible y consistente (accesibilidad) */
+:focus-visible {
+  outline: 2px solid var(--volt);
+  outline-offset: 2px;
+}
+
+/* ==========================================================================
+   Superficies: chapa sólida con borde fino (sin glassmorphism)
+   ========================================================================== */
 .glass-panel {
-  background: rgba(24, 24, 27, 0.7);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: var(--surface);
+  border: 1px solid var(--line);
 }
 
 .glass-panel-hover {
-  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: border-color 180ms var(--ease-out), transform 180ms var(--ease-out);
 }
 
-.glass-panel-hover:hover {
-  border-color: rgba(59, 130, 246, 0.4);
-  box-shadow: 0 0 25px rgba(37, 99, 235, 0.15);
-  transform: translateY(-2px);
+@media (hover: hover) {
+  .glass-panel-hover:hover {
+    border-color: var(--line-strong);
+    transform: translateY(-2px);
+  }
 }
 
-/* Glow effects */
+/* Textura de placa diamantada / grilla técnica para fondos de sección */
+.bg-plate {
+  background-color: var(--ink);
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.025) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.025) 1px, transparent 1px);
+  background-size: 32px 32px;
+}
+
+/* Cinta de señalización (hazard) — detalle memorable de marca */
+.hazard-stripe {
+  background-image: repeating-linear-gradient(
+    -45deg,
+    var(--volt) 0 12px,
+    var(--ink) 12px 24px
+  );
+}
+
+/* Etiqueta técnica en mayúsculas */
+.label-industrial {
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 0.6875rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+/* Glows heredados → halos sobrios */
 .brand-glow {
-  box-shadow: 0 0 30px var(--brand-glow);
+  box-shadow: 0 0 0 1px rgba(232, 255, 58, 0.25), 0 12px 32px -12px rgba(232, 255, 58, 0.35);
 }
-
 .glow-emerald {
-  box-shadow: 0 0 30px rgba(16, 185, 129, 0.25);
+  box-shadow: 0 0 0 1px rgba(59, 214, 127, 0.3), 0 16px 40px -16px rgba(59, 214, 127, 0.45);
 }
-
 .glow-rose {
-  box-shadow: 0 0 30px rgba(244, 63, 94, 0.25);
+  box-shadow: 0 0 0 1px rgba(242, 85, 90, 0.3), 0 16px 40px -16px rgba(242, 85, 90, 0.45);
 }
-
 .glow-amber {
-  box-shadow: 0 0 30px rgba(245, 158, 11, 0.25);
+  box-shadow: 0 0 0 1px rgba(245, 165, 36, 0.3), 0 16px 40px -16px rgba(245, 165, 36, 0.45);
 }
 
-/* Custom Scrollbar for dense enterprise dashboards */
+/* Feedback táctil en botones */
+button:not(:disabled):active,
+a[role="button"]:active {
+  transform: scale(0.97);
+}
+
+/* Ocultar scrollbar en tiras de tabs */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  scrollbar-width: none;
+}
+
+/* Scrollbar */
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 8px;
+  height: 8px;
 }
-
 ::-webkit-scrollbar-track {
-  background: #09090b;
+  background: var(--ink);
 }
-
 ::-webkit-scrollbar-thumb {
-  background: #27272a;
-  border-radius: 9999px;
+  background: var(--line-strong);
+  border-radius: 2px;
 }
-
 ::-webkit-scrollbar-thumb:hover {
-  background: #3f3f46;
+  background: #5a5a52;
 }
 
+/* Inputs tipo range con acento de marca */
+input[type="range"] {
+  accent-color: var(--volt);
+}
+
+/* Movimiento reducido */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

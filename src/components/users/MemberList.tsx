@@ -19,10 +19,24 @@ import { exportMembersToCsv } from "@/lib/export/csv-exporter";
 import { generateWhatsAppLink } from "@/lib/whatsapp/whatsapp-helper";
 
 interface MemberListProps {
+  gymName?: string;
   tenantId: string;
 }
 
-export function MemberList({ tenantId }: MemberListProps) {
+const STATUS_LABELS: Record<string, string> = {
+  ACTIVE: "Activo",
+  DEBTOR: "Deudor",
+  SUSPENDED: "Suspendido",
+  INACTIVE: "Inactivo",
+};
+const ROLE_LABELS: Record<string, string> = {
+  SUPERADMIN: "Admin",
+  RECEPCIONISTA: "Recepción",
+  ENTRENADOR: "Entrenador",
+  SOCIO: "Socio",
+};
+
+export function MemberList({ gymName = "tu gimnasio", tenantId }: MemberListProps) {
   const [members, setMembers] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState("");
@@ -89,21 +103,21 @@ export function MemberList({ tenantId }: MemberListProps) {
             className="h-11 px-3.5 rounded-2xl bg-slate-900 border border-slate-800 text-slate-300 hover:text-white hover:border-slate-700 flex items-center gap-1.5 text-xs font-semibold transition-all disabled:opacity-50"
             title="Exportar a Excel / CSV"
           >
-            <Download className="w-3.5 h-3.5 text-emerald-400" />
+            <Download className="w-3.5 h-3.5 text-volt-400" />
             <span>Exportar Excel</span>
           </button>
 
           <button
             onClick={() => setIsImportModalOpen(true)}
-            className="h-11 px-3.5 rounded-2xl bg-slate-900 hover:bg-slate-800 border border-slate-800 hover:border-emerald-500/30 text-emerald-400 text-xs font-bold flex items-center gap-1.5 transition-all"
+            className="h-11 px-3.5 rounded-2xl bg-slate-900 hover:bg-slate-800 border border-slate-800 hover:border-slate-600 text-slate-200 text-xs font-bold flex items-center gap-1.5 transition-all"
           >
             <FileSpreadsheet className="w-3.5 h-3.5" />
-            <span>Importar CSV</span>
+            <span>Importar Excel/CSV</span>
           </button>
 
           <button
             onClick={() => setIsModalOpen(true)}
-            className="h-11 px-4 rounded-2xl bg-emerald-500 hover:bg-emerald-400 text-black text-xs font-bold flex items-center gap-2 shadow-lg shadow-emerald-500/20 active:scale-95 transition-all"
+            className="h-11 px-4 rounded-2xl bg-volt-400 hover:bg-volt-300 text-ink text-xs font-bold flex items-center gap-2 shadow-lg shadow-volt-400/10 active:scale-95 transition-all"
           >
             <UserPlus className="w-4 h-4" />
             <span>Nuevo Socio</span>
@@ -145,7 +159,7 @@ export function MemberList({ tenantId }: MemberListProps) {
                     phone: member.phone,
                     memberName: member.firstName,
                     type: isDebtor ? "DEBT_REMINDER" : "DUE_SOON",
-                    gymName: "GymAI",
+                    gymName,
                   });
 
                   return (
@@ -164,7 +178,7 @@ export function MemberList({ tenantId }: MemberListProps) {
                       <td className="py-3.5 px-6 font-mono text-slate-300">{member.dni}</td>
                       <td className="py-3.5 px-6">
                         <span className="px-2.5 py-1 rounded-full text-[10px] font-bold uppercase bg-slate-800 text-slate-300 border border-slate-700">
-                          {member.role}
+                          {ROLE_LABELS[member.role] || member.role}
                         </span>
                       </td>
                       <td className="py-3.5 px-6">
@@ -180,11 +194,11 @@ export function MemberList({ tenantId }: MemberListProps) {
                               member.status === "ACTIVE" ? "bg-emerald-400" : "bg-rose-400"
                             }`}
                           ></span>
-                          {member.status}
+                          {STATUS_LABELS[member.status] || member.status}
                         </span>
                       </td>
                       <td className="py-3.5 px-6 text-slate-500 font-mono text-[11px]">
-                        {new Date(member.createdAt).toLocaleDateString()}
+                        {new Date(member.createdAt).toLocaleDateString("es-AR")}
                       </td>
                       <td className="py-3.5 px-6 text-right">
                         <a

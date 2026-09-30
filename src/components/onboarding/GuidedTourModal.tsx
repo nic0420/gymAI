@@ -45,14 +45,16 @@ export function GuidedTourModal({ isOpen, tourId = "receptionist", onClose }: Gu
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in">
       <div className="w-full max-w-lg bg-slate-900 border border-slate-700 rounded-3xl p-6 shadow-2xl relative overflow-hidden">
         {/* Glow Header */}
-        <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-emerald-500 via-cyan-500 to-indigo-500" />
+        <div className="absolute top-0 left-0 right-0 h-1 hazard-stripe" />
 
         {/* Step Indicator */}
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
-            <span className="text-2xl">{step.icon || "💡"}</span>
+            <span className="flex h-10 w-10 items-center justify-center rounded-md bg-volt-400 font-display text-lg font-extrabold text-ink" aria-hidden>
+              {currentStepIndex + 1}
+            </span>
             <div>
-              <p className="text-xs font-semibold text-emerald-400 uppercase tracking-wider">
+              <p className="label-industrial text-volt-400">
                 {tour.title}
               </p>
               <h3 className="text-lg font-bold text-white">
@@ -64,7 +66,7 @@ export function GuidedTourModal({ isOpen, tourId = "receptionist", onClose }: Gu
             onClick={onClose}
             className="text-slate-400 hover:text-white text-sm bg-slate-800 px-2.5 py-1 rounded-full border border-slate-700"
           >
-            ✕ Salir
+            Salir
           </button>
         </div>
 
@@ -108,7 +110,7 @@ export function GuidedTourModal({ isOpen, tourId = "receptionist", onClose }: Gu
             </button>
             <button
               onClick={handleNext}
-              className="px-6 py-2.5 rounded-xl text-sm font-bold bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 shadow-lg shadow-emerald-500/20 transition-all active:scale-95"
+              className="px-6 py-2.5 rounded-xl text-sm font-bold bg-volt-400 hover:bg-volt-300 text-ink shadow-lg shadow-emerald-500/20 transition-all active:scale-95"
             >
               {isLast ? "¡Comenzar a Usar!" : "Siguiente →"}
             </button>

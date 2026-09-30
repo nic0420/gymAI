@@ -1,4 +1,4 @@
-# 📖 Manual de Usuario y Arquitectura Técnica — GymAI Enterprise
+# 📖 Manual de Usuario y Arquitectura Técnica — SpotterApp Enterprise
 
 **Versión:** 1.0 Enterprise  
 **Producción:** [https://gymai-eta.vercel.app](https://gymai-eta.vercel.app)  
@@ -8,7 +8,7 @@
 
 ## 📑 Tabla de Contenidos
 1. [Visión General de la Plataforma](#1-visión-general-de-la-plataforma)
-2. [¿Qué Incluye GymAI? (Módulos del Sistema)](#2-qué-incluye-gymai-módulos-del-sistema)
+2. [¿Qué Incluye SpotterApp? (Módulos del Sistema)](#2-qué-incluye-gymai-módulos-del-sistema)
    - [2.1 Landing Page Pública B2B](#21-landing-page-pública-b2b)
    - [2.2 Recepción, Control de Acceso & Semáforo <2ms](#22-recepción-control-de-acceso--semáforo-2ms)
    - [2.3 Modo Kiosco Táctil de Auto-Atención](#23-modo-kiosco-táctil-de-auto-atención)
@@ -30,7 +30,7 @@
 
 ## 1. Visión General de la Plataforma
 
-**GymAI** es una solución SaaS B2B Multi-Tenant de alto rendimiento diseñada para cadenas de gimnasios, boxes de CrossFit y centros deportivos que operan con altos volúmenes de socios y requieren:
+**SpotterApp** es una solución SaaS B2B Multi-Tenant de alto rendimiento diseñada para cadenas de gimnasios, boxes de CrossFit y centros deportivos que operan con altos volúmenes de socios y requieren:
 * **Tolerancia cero a caídas:** Motor *Offline-First* con `IndexedDB` que permite validar accesos aun sin internet.
 * **Velocidad extrema en recepción:** Semáforo inteligente con validación en memoria y búsqueda por Blind Index en tiempo constante $O(1)$ (< 2ms de latencia).
 * **Seguridad de grado bancario:** Cifrado Envelope `AES-256-GCM` para historial médico, Blind Indexing con `HMAC-SHA256` y sesiones rotativas `RTR` con detección de ataques.
@@ -38,7 +38,7 @@
 
 ---
 
-## 2. ¿Qué Incluye GymAI? (Módulos del Sistema)
+## 2. ¿Qué Incluye SpotterApp? (Módulos del Sistema)
 
 ### 2.1 Landing Page Pública B2B
 * **Hero Section:** Propuesta de valor clara (*"La infraestructura operativa para gimnasios de alto rendimiento"*), botones de conversión ("Iniciar Prueba Gratuita", "Agendar Demo", "Modo Kiosco").

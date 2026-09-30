@@ -1,4 +1,4 @@
-# ⚡ GymAI — Enterprise SaaS Gym Management Platform
+# ⚡ SpotterApp — Enterprise SaaS Gym Management Platform
 
 Plataforma SaaS Integral, Multi-Tenant y de Alta Disponibilidad para la Gestión, Facturación, Control de Acceso (<2ms) y Entrenamiento Inteligente en Cadenas de Gimnasios y Centros Deportivos.
 

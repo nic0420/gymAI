@@ -144,8 +144,8 @@ export function WorkoutBuilder({ tenantId }: WorkoutBuilderProps) {
       <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
         <div>
           <h2 className="text-xl font-bold text-white flex items-center gap-2">
-            <Dumbbell className="w-6 h-6 text-emerald-400" />
-            Creador de Planes de Entrenamiento (Workout Builder)
+            <Dumbbell className="w-6 h-6 text-volt-400" />
+            Rutinas y planes
           </h2>
           <p className="text-xs text-slate-400">
             Diseño modular de rutinas, plantillas maestras y splits personalizados
@@ -156,7 +156,7 @@ export function WorkoutBuilder({ tenantId }: WorkoutBuilderProps) {
           {activeView === "list" ? (
             <button
               onClick={() => setActiveView("create")}
-              className="h-11 px-4 rounded-2xl bg-emerald-500 hover:bg-emerald-400 text-black text-xs font-bold flex items-center gap-2 shadow-lg shadow-emerald-500/20 active:scale-95 transition-all"
+              className="h-11 px-4 rounded-2xl bg-volt-400 hover:bg-volt-300 text-ink text-xs font-bold flex items-center gap-2 shadow-lg shadow-volt-400/10 active:scale-95 transition-all"
             >
               <Plus className="w-4 h-4" />
               <span>Crear Nuevo Plan</span>
@@ -186,6 +186,22 @@ export function WorkoutBuilder({ tenantId }: WorkoutBuilderProps) {
       )}
 
       {/* VISTA 1: Catálogo de Rutinas / Plantillas */}
+      {activeView === "list" && routinesList.length === 0 && !loading && (
+        <div className="rounded-xl border border-dashed border-graphite-700 p-12 text-center">
+          <Dumbbell className="mx-auto h-8 w-8 text-graphite-500" aria-hidden />
+          <h3 className="mt-4 text-2xl font-bold text-graphite-50">Todavía no hay plantillas</h3>
+          <p className="mx-auto mt-2 max-w-sm text-sm text-graphite-400">
+            Armá tu primera rutina base y después asignala a tus socios en un clic.
+          </p>
+          <button
+            onClick={() => setActiveView("create")}
+            className="mt-6 inline-flex h-11 items-center gap-2 rounded-lg bg-volt-400 px-5 text-sm font-bold text-ink hover:bg-volt-300"
+          >
+            <Plus className="h-4 w-4" aria-hidden /> Crear plan
+          </button>
+        </div>
+      )}
+
       {activeView === "list" && (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {routinesList.map((r) => (
@@ -260,10 +276,10 @@ export function WorkoutBuilder({ tenantId }: WorkoutBuilderProps) {
                   onChange={(e) => setRoutineGoal(e.target.value as any)}
                   className="w-full h-11 px-3 bg-slate-950 border border-slate-800 rounded-xl text-white outline-none focus:border-emerald-400 text-xs"
                 >
-                  <option value="HYPERTROPHY">💪 Hipertrofia / Masa Muscular</option>
-                  <option value="STRENGTH">🏋️ Fuerza Máxima</option>
-                  <option value="FAT_LOSS">🔥 Pérdida de Grasa / Definición</option>
-                  <option value="ENDURANCE">⚡ Resistencia</option>
+                  <option value="HYPERTROPHY">Hipertrofia / Masa Muscular</option>
+                  <option value="STRENGTH">Fuerza Máxima</option>
+                  <option value="FAT_LOSS">Pérdida de Grasa / Definición</option>
+                  <option value="ENDURANCE">Resistencia</option>
                 </select>
               </div>
 
@@ -427,7 +443,7 @@ export function WorkoutBuilder({ tenantId }: WorkoutBuilderProps) {
             <button
               type="submit"
               disabled={loading}
-              className="px-6 py-2.5 rounded-2xl bg-emerald-500 hover:bg-emerald-400 text-black font-bold text-xs shadow-lg shadow-emerald-500/20 active:scale-95 transition-all"
+              className="px-6 py-2.5 rounded-2xl bg-volt-400 hover:bg-volt-300 text-ink font-bold text-xs shadow-lg shadow-volt-400/10 active:scale-95 transition-all"
             >
               Guardar Rutina
             </button>

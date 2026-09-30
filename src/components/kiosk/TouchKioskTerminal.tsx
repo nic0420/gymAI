@@ -3,6 +3,8 @@
 import React, { useState, useEffect, useRef } from "react";
 import { soundEffects } from "@/lib/kiosk/sound-effects";
 import { apiFetch } from "@/lib/api-client";
+import { ArrowRight, CircleCheck, CircleX, Delete, Loader2, Maximize, TriangleAlert } from "lucide-react";
+import { SpotterMark } from "@/components/brand/SpotterLogo";
 import type { CheckInResult } from "@/lib/attendance/checkin-engine";
 
 interface CheckInEvaluation {
@@ -22,6 +24,7 @@ interface CheckInEvaluation {
 }
 
 interface TouchKioskTerminalProps {
+  gymName?: string;
   tenantId: string;
   branchId: string;
   onClose?: () => void;
@@ -47,7 +50,7 @@ function mapCheckInToKiosk(result: CheckInResult): CheckInEvaluation {
   };
 }
 
-export function TouchKioskTerminal({ tenantId, branchId, onClose }: TouchKioskTerminalProps) {
+export function TouchKioskTerminal({ gymName = "tu gimnasio", tenantId, branchId, onClose }: TouchKioskTerminalProps) {
   const [inputDni, setInputDni] = useState("");
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<CheckInEvaluation | null>(null);
@@ -168,22 +171,21 @@ export function TouchKioskTerminal({ tenantId, branchId, onClose }: TouchKioskTe
       {/* Top Bar */}
       <div className="flex items-center justify-between border-b border-slate-800 pb-4">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-emerald-500 to-cyan-500 flex items-center justify-center shadow-lg shadow-emerald-500/20">
-            <span className="text-xl font-black text-slate-950">G</span>
-          </div>
+          <SpotterMark className="w-11 h-11" />
           <div>
-            <h1 className="text-xl font-bold tracking-tight text-white">GYMAI TOUCH KIOSK</h1>
-            <p className="text-xs text-slate-400">Terminal de Auto-Atención y Acceso</p>
+            <h1 className="font-display text-2xl font-extrabold uppercase leading-none text-white">{gymName}</h1>
+            <p className="label-industrial mt-1 text-slate-400">Kiosco de ingreso · SpotterApp</p>
           </div>
         </div>
 
         <div className="flex items-center gap-3">
           <button
             onClick={toggleFullScreen}
-            className="p-3 bg-slate-900 border border-slate-700 text-slate-300 hover:text-white rounded-2xl text-sm font-semibold transition-all active:scale-95"
+            className="inline-flex items-center gap-2 p-3 bg-slate-900 border border-slate-700 text-slate-300 hover:text-white rounded-2xl text-sm font-semibold transition-all active:scale-95"
             title="Pantalla Completa"
           >
-            ⛶ Pantalla Completa
+            <Maximize className="w-4 h-4" aria-hidden />
+            <span className="hidden sm:inline">Pantalla completa</span>
           </button>
           {onClose && (
             <button
@@ -211,14 +213,23 @@ export function TouchKioskTerminal({ tenantId, branchId, onClose }: TouchKioskTe
               }`}
             >
               {/* Traffic Light Icon */}
-              <div className="text-7xl mb-4 animate-bounce">
-                {result.status === "GREEN" && "🟢"}
-                {result.status === "YELLOW" && "🟡"}
-                {result.status === "RED" && "🔴"}
+              <div
+                className={`mx-auto mb-5 flex h-24 w-24 items-center justify-center rounded-full ${
+                  result.status === "GREEN"
+                    ? "bg-emerald-400 text-ink"
+                    : result.status === "YELLOW"
+                    ? "bg-amber-400 text-ink"
+                    : "bg-rose-500 text-white"
+                }`}
+                aria-hidden
+              >
+                {result.status === "GREEN" && <CircleCheck className="h-14 w-14" strokeWidth={2.5} />}
+                {result.status === "YELLOW" && <TriangleAlert className="h-12 w-12" strokeWidth={2.5} />}
+                {result.status === "RED" && <CircleX className="h-14 w-14" strokeWidth={2.5} />}
               </div>
 
               <h2
-                className={`text-2xl font-black mb-2 tracking-wide uppercase ${
+                className={`font-display text-5xl font-extrabold mb-2 uppercase ${
                   result.status === "GREEN"
                     ? "text-emerald-400"
                     : result.status === "YELLOW"
@@ -227,10 +238,10 @@ export function TouchKioskTerminal({ tenantId, branchId, onClose }: TouchKioskTe
                 }`}
               >
                 {result.status === "GREEN"
-                  ? "¡ACCESO PERMITIDO!"
+                  ? "Adelante"
                   : result.status === "YELLOW"
-                  ? "ACCESO CON ADVERTENCIA"
-                  : "ACCESO DENEGADO"}
+                  ? "Pasá, con aviso"
+                  : "No podés pasar"}
               </h2>
 
               {result.member ? (
@@ -247,7 +258,7 @@ export function TouchKioskTerminal({ tenantId, branchId, onClose }: TouchKioskTe
 
               <div className="mt-6 flex items-center justify-between text-xs text-slate-400">
                 <span>Latencia: {result.metrics?.evaluationTimeMs ?? 0} ms</span>
-                <span className="font-semibold text-emerald-400">
+                <span className="font-semibold text-volt-400">
                   Reiniciando en {countdown}s...
                 </span>
               </div>
@@ -262,17 +273,15 @@ export function TouchKioskTerminal({ tenantId, branchId, onClose }: TouchKioskTe
           ) : (
             <div className="w-full max-w-md text-center">
               <div className="mb-4">
-                <span className="text-sm font-semibold uppercase tracking-widest text-emerald-400 bg-emerald-500/10 px-3 py-1.5 rounded-full border border-emerald-500/20">
-                  Ingreso de Socios
-                </span>
+                <span className="label-industrial text-volt-400">Ingreso de socios</span>
               </div>
-              <h2 className="text-3xl font-black text-white mb-2">Digita tu DNI</h2>
+              <h2 className="font-display text-6xl font-extrabold text-white mb-3">Poné tu DNI</h2>
               <p className="text-slate-400 text-sm mb-6">
-                Ingresa tu número de documento para validar tu ingreso al gimnasio.
+                Escribí tu número de documento y tocá “Validar”.
               </p>
 
               {/* DNI Display Screen */}
-              <div className="h-20 bg-slate-900 border-2 border-slate-700 focus-within:border-emerald-500 rounded-3xl flex items-center justify-center px-6 shadow-inner">
+              <div className="h-20 bg-slate-900 border-2 border-slate-700 focus-within:border-volt-400 rounded-3xl flex items-center justify-center px-6 shadow-inner">
                 <span className="text-4xl font-mono font-bold tracking-widest text-white">
                   {inputDni || <span className="text-slate-600 font-sans text-2xl">_ _ _ _ _ _ _ _</span>}
                 </span>
@@ -289,7 +298,7 @@ export function TouchKioskTerminal({ tenantId, branchId, onClose }: TouchKioskTe
                 key={num}
                 onClick={() => handleKeyPress(num)}
                 disabled={loading}
-                className="h-16 rounded-2xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-2xl font-bold text-white shadow active:scale-95 active:bg-emerald-600 transition-all flex items-center justify-center disabled:opacity-50"
+                className="h-16 rounded-2xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-2xl font-bold text-white shadow active:scale-95 active:bg-volt-400 active:text-ink transition-all flex items-center justify-center disabled:opacity-50"
               >
                 {num}
               </button>
@@ -306,7 +315,7 @@ export function TouchKioskTerminal({ tenantId, branchId, onClose }: TouchKioskTe
             <button
               onClick={() => handleKeyPress("0")}
               disabled={loading}
-              className="h-16 rounded-2xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-2xl font-bold text-white shadow active:scale-95 active:bg-emerald-600 transition-all flex items-center justify-center disabled:opacity-50"
+              className="h-16 rounded-2xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-2xl font-bold text-white shadow active:scale-95 active:bg-volt-400 active:text-ink transition-all flex items-center justify-center disabled:opacity-50"
             >
               0
             </button>
@@ -316,21 +325,21 @@ export function TouchKioskTerminal({ tenantId, branchId, onClose }: TouchKioskTe
               disabled={loading || !inputDni}
               className="h-16 rounded-2xl bg-slate-800/60 hover:bg-slate-700 border border-slate-700 text-lg font-bold text-amber-400 active:scale-95 transition-all flex items-center justify-center disabled:opacity-30"
             >
-              ⌫
+              <Delete className="w-6 h-6" aria-label="Borrar" />
             </button>
           </div>
 
           <button
             onClick={handleSubmit}
             disabled={loading || !inputDni.trim() || isDebouncing}
-            className="w-full mt-4 h-16 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 text-lg font-black tracking-wide shadow-lg shadow-emerald-500/20 active:scale-95 transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:pointer-events-none"
+            className="w-full mt-4 h-16 rounded-2xl bg-volt-400 hover:bg-volt-300 text-ink text-lg font-black tracking-wide active:scale-95 transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:pointer-events-none"
           >
             {loading ? (
-              <span className="animate-spin text-xl">⏳</span>
+              <Loader2 className="w-6 h-6 animate-spin" aria-label="Validando" />
             ) : (
               <>
-                <span>VALIDAR INGRESO</span>
-                <span className="text-xl">➔</span>
+                <span className="font-display text-2xl font-extrabold uppercase">Validar</span>
+                <ArrowRight className="w-6 h-6" aria-hidden />
               </>
             )}
           </button>
@@ -339,7 +348,7 @@ export function TouchKioskTerminal({ tenantId, branchId, onClose }: TouchKioskTe
 
       {/* Bottom Footer */}
       <div className="text-center text-xs text-slate-500 border-t border-slate-800/60 pt-3">
-        Terminal Conectada • Soporte Offline Activo • Latencia promedio &lt; 2ms
+        <span className="label-industrial">SpotterApp · Alguien te tiene que cuidar la barra</span>
       </div>
     </div>
   );

@@ -8,12 +8,13 @@ import { exportInvoicesToCsv } from "@/lib/export/csv-exporter";
 import { generateWhatsAppLink } from "@/lib/whatsapp/whatsapp-helper";
 
 interface InvoicesTableProps {
+  gymName?: string;
   tenantId: string;
   branchId?: string;
   cashShiftId?: string;
 }
 
-export function InvoicesTable({ tenantId, branchId, cashShiftId }: InvoicesTableProps) {
+export function InvoicesTable({ gymName = "tu gimnasio", tenantId, branchId, cashShiftId }: InvoicesTableProps) {
   const [invoices, setInvoices] = useState<any[]>([]);
   // FIX: antes nunca se pasaba la caja abierta al cobro, así que los pagos en efectivo
   // NO ingresaban a la caja y el arqueo ciego siempre daba "sobrante". Ahora se busca la
@@ -66,7 +67,7 @@ export function InvoicesTable({ tenantId, branchId, cashShiftId }: InvoicesTable
     <div className="space-y-4">
       <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
         <h3 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
-          <FileText className="w-4 h-4 text-emerald-400" />
+          <FileText className="w-4 h-4 text-volt-400" />
           Facturas & Obligaciones de Cobro
         </h3>
 
@@ -86,7 +87,7 @@ export function InvoicesTable({ tenantId, branchId, cashShiftId }: InvoicesTable
             className="px-3 py-1.5 rounded-xl bg-slate-900 border border-slate-800 text-slate-300 hover:text-white hover:border-slate-700 flex items-center gap-1.5 text-xs font-semibold transition-all disabled:opacity-50"
             title="Descargar Excel para el Contador"
           >
-            <Download className="w-3.5 h-3.5 text-emerald-400" />
+            <Download className="w-3.5 h-3.5 text-volt-400" />
             <span>Descargar Excel</span>
           </button>
         </div>
@@ -128,7 +129,7 @@ export function InvoicesTable({ tenantId, branchId, cashShiftId }: InvoicesTable
                     type: "DEBT_REMINDER",
                     amount: remaining,
                     dueDate: inv.dueDate,
-                    gymName: "GymAI",
+                    gymName,
                   });
 
                   return (
@@ -137,12 +138,12 @@ export function InvoicesTable({ tenantId, branchId, cashShiftId }: InvoicesTable
                         {inv.invoiceNumber}
                         <span className="block text-[10px] font-sans font-normal text-slate-500">{inv.memberName}</span>
                       </td>
-                      <td className="py-3 px-6 font-mono">${inv.totalAmount.toLocaleString()}</td>
+                      <td className="py-3 px-6 font-mono">${inv.totalAmount.toLocaleString("es-AR")}</td>
                       <td className="py-3 px-6 font-mono text-emerald-400">
-                        ${inv.paidAmount.toLocaleString()}
+                        ${inv.paidAmount.toLocaleString("es-AR")}
                       </td>
                       <td className="py-3 px-6 font-mono font-bold text-white">
-                        ${remaining.toLocaleString()}
+                        ${remaining.toLocaleString("es-AR")}
                       </td>
                       <td className="py-3 px-6">
                         <span
@@ -190,7 +191,7 @@ export function InvoicesTable({ tenantId, branchId, cashShiftId }: InvoicesTable
                                 memberName: inv.memberName || "Socio",
                               })
                             }
-                            className="px-3 py-1.5 rounded-xl bg-emerald-500/10 hover:bg-emerald-500 text-emerald-400 hover:text-black font-bold text-xs border border-emerald-500/30 transition-all flex items-center gap-1"
+                            className="px-3 py-1.5 rounded-xl bg-volt-400/10 hover:bg-volt-400 text-volt-300 hover:text-ink font-bold text-xs border border-volt-400/30 transition-all flex items-center gap-1"
                           >
                             <DollarSign className="w-3.5 h-3.5" />
                             <span>Cobrar</span>

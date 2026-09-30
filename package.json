@@ -1,8 +1,8 @@
 {
-  "name": "gymai-saas",
+  "name": "spotterapp",
   "version": "1.0.0",
   "private": true,
-  "description": "Plataforma SaaS Integral de Gestión de Gimnasios de Nivel Enterprise",
+  "description": "SpotterApp — software de gestión para gimnasios",
   "scripts": {
     "dev": "next dev",
     "build": "next build",

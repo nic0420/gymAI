@@ -236,6 +236,19 @@ export async function POST(req: NextRequest) {
           updatedAt: nowIso,
         });
 
+        // Registrar el cobro real para que los reportes (cobrado en 30 días) reflejen la demo
+        if (isPaid) {
+          await db.insert(paymentTransactions).values({
+            id: generateUUIDv7(),
+            tenantId,
+            invoiceId,
+            amount: planPrice,
+            paymentMethod: i % 2 === 0 ? "CASH" : "MERCADO_PAGO_QR",
+            status: "APPROVED",
+            createdAt: new Date(now.getTime() - (i % 20) * 86_400_000).toISOString(),
+          });
+        }
+
         createdCount++;
       }
 

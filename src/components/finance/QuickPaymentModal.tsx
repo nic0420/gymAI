@@ -75,7 +75,7 @@ export function QuickPaymentModal({
     }
     // FIX: antes se podía cobrar más que el saldo (la factura quedaba con paidAmount > total)
     if (Math.round(totalSplits * 100) > Math.round(invoice.remainingAmount * 100)) {
-      setErrorMsg(`El total ingresado supera el saldo pendiente ($${invoice.remainingAmount.toLocaleString()})`);
+      setErrorMsg(`El total ingresado supera el saldo pendiente ($${invoice.remainingAmount.toLocaleString("es-AR")})`);
       return;
     }
     if (splits.some((sp) => sp.paymentMethod === "CASH") && !cashShiftId) {
@@ -105,7 +105,7 @@ export function QuickPaymentModal({
 
       setSuccessMsg(
         `¡Pago registrado exitosamente! ${
-          data.data?.subscriptionActivated ? "🎉 Membresía activada al día." : ""
+          data.data?.subscriptionActivated ? "Membresía activada." : ""
         }`
       );
 
@@ -148,7 +148,7 @@ export function QuickPaymentModal({
           <div>
             <span className="text-slate-500 block">Total a Cobrar</span>
             <span className="text-xl font-black text-white font-mono">
-              ${invoice.remainingAmount.toLocaleString()}
+              ${invoice.remainingAmount.toLocaleString("es-AR")}
             </span>
           </div>
           <div className="text-right">
@@ -202,11 +202,11 @@ export function QuickPaymentModal({
                     onChange={(e) => handleSplitChange(idx, "paymentMethod", e.target.value)}
                     className="h-10 px-2.5 bg-slate-900 border border-slate-800 rounded-xl text-white outline-none focus:border-emerald-400 text-xs"
                   >
-                    <option value="CASH">💵 Efectivo</option>
-                    <option value="MERCADO_PAGO_QR">📱 Mercado Pago QR</option>
-                    <option value="DEBIT_CARD">💳 Tarjeta Débito</option>
-                    <option value="CREDIT_CARD">💳 Tarjeta Crédito</option>
-                    <option value="BANK_TRANSFER">🏦 Transferencia</option>
+                    <option value="CASH">Efectivo</option>
+                    <option value="MERCADO_PAGO_QR">Mercado Pago QR</option>
+                    <option value="DEBIT_CARD">Tarjeta de débito</option>
+                    <option value="CREDIT_CARD">Tarjeta de crédito</option>
+                    <option value="BANK_TRANSFER">Transferencia</option>
                   </select>
 
                   <div className="relative flex-1">
@@ -249,7 +249,7 @@ export function QuickPaymentModal({
                   : "text-rose-400"
               }`}
             >
-              ${totalSplits.toLocaleString()} {difference !== 0 && `(Resta: $${difference.toLocaleString()})`}
+              ${totalSplits.toLocaleString("es-AR")} {difference !== 0 && `(Resta: $${difference.toLocaleString("es-AR")})`}
             </span>
           </div>
 
@@ -264,7 +264,7 @@ export function QuickPaymentModal({
             <button
               type="submit"
               disabled={loading || totalSplits <= 0}
-              className="px-5 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-bold flex items-center gap-2 shadow-lg shadow-emerald-500/20 disabled:opacity-50 active:scale-95 transition-all"
+              className="px-5 py-2 rounded-xl bg-volt-400 hover:bg-volt-300 text-ink font-bold flex items-center gap-2 shadow-lg shadow-volt-400/10 disabled:opacity-50 active:scale-95 transition-all"
             >
               {loading ? (
                 <span>Procesando...</span>

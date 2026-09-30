@@ -96,7 +96,7 @@ export function LiveWorkoutTracker({ tenantId, userId }: LiveWorkoutTrackerProps
               <Flame className="w-4 h-4" />
             </div>
             <h3 className="text-base font-bold text-white tracking-tight">
-              Live Workout Tracker & Estimador 1RM
+              Entrenamiento en vivo
             </h3>
           </div>
           <p className="text-xs text-zinc-400 mt-1">
@@ -110,7 +110,7 @@ export function LiveWorkoutTracker({ tenantId, userId }: LiveWorkoutTrackerProps
               setActiveSession(true);
               setSessionSummary(null);
             }}
-            className="px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold flex items-center gap-2 shadow-lg shadow-blue-600/25 active:scale-95 transition-all"
+            className="px-5 py-2.5 rounded-xl bg-volt-400 hover:bg-volt-300 text-ink text-xs font-bold flex items-center gap-2 shadow-lg shadow-volt-400/10 active:scale-95 transition-all"
           >
             <Play className="w-3.5 h-3.5 fill-white" />
             <span>Iniciar Entrenamiento Hoy</span>
@@ -134,7 +134,7 @@ export function LiveWorkoutTracker({ tenantId, userId }: LiveWorkoutTrackerProps
             </div>
             <div>
               <h4 className="text-xs font-black uppercase tracking-wider text-amber-400">
-                🏆 ¡Nuevo Récord Personal Detectado!
+                ¡Nuevo récord personal!
               </h4>
               <p className="text-xs text-zinc-300">
                 Has alcanzado un nuevo 1RM estimado de <strong className="text-white font-mono">{prAlert.rm} kg</strong> en {prAlert.exercise}.
@@ -148,6 +148,16 @@ export function LiveWorkoutTracker({ tenantId, userId }: LiveWorkoutTrackerProps
       )}
 
       {/* Resumen de Sesión Finalizada */}
+      {!activeSession && !sessionSummary && (
+        <div className="rounded-xl border border-dashed border-graphite-700 p-12 text-center">
+          <Flame className="mx-auto h-8 w-8 text-graphite-500" aria-hidden />
+          <h3 className="mt-4 text-2xl font-bold text-graphite-50">Listo para entrenar</h3>
+          <p className="mx-auto mt-2 max-w-sm text-sm text-graphite-400">
+            Iniciá la sesión, completá cada serie y el sistema calcula tu 1RM estimado y te avisa cuando rompés tu marca.
+          </p>
+        </div>
+      )}
+
       {sessionSummary && (
         <div className="p-6 rounded-3xl bg-zinc-900 border border-emerald-500/40 shadow-xl space-y-4 animate-in fade-in">
           <div className="flex items-center gap-2 text-emerald-400 font-bold text-sm">
@@ -241,7 +251,7 @@ export function LiveWorkoutTracker({ tenantId, userId }: LiveWorkoutTrackerProps
                   <span>{set.estimated1RM} kg</span>
                   {set.isPR && (
                     <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30">
-                      PR 🏆
+                      PR
                     </span>
                   )}
                 </div>

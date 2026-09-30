@@ -157,7 +157,7 @@ export function CashRegisterView({ tenantId, branchId }: CashRegisterViewProps) 
       <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
         <div>
           <h2 className="text-xl font-bold text-white flex items-center gap-2">
-            <DollarSign className="w-6 h-6 text-emerald-400" />
+            <DollarSign className="w-6 h-6 text-volt-400" />
             Caja Diaria & Arqueo Ciego
           </h2>
           <p className="text-xs text-slate-400">
@@ -195,7 +195,7 @@ export function CashRegisterView({ tenantId, branchId }: CashRegisterViewProps) 
               className="h-11 px-3.5 rounded-2xl bg-slate-900 border border-slate-800 text-slate-300 hover:text-white hover:border-slate-700 flex items-center gap-1.5 text-xs font-semibold"
               title="Descargar Arqueo en Excel"
             >
-              <Download className="w-4 h-4 text-emerald-400" />
+              <Download className="w-4 h-4 text-volt-400" />
               <span>Exportar Caja</span>
             </button>
           )}
@@ -203,7 +203,7 @@ export function CashRegisterView({ tenantId, branchId }: CashRegisterViewProps) 
           {!shiftData?.shift ? (
             <button
               onClick={() => setOpenModal(true)}
-              className="h-11 px-4 rounded-2xl bg-emerald-500 hover:bg-emerald-400 text-black text-xs font-bold flex items-center gap-2 shadow-lg shadow-emerald-500/20 active:scale-95 transition-all"
+              className="h-11 px-4 rounded-2xl bg-volt-400 hover:bg-volt-300 text-ink text-xs font-bold flex items-center gap-2 shadow-lg shadow-volt-400/10 active:scale-95 transition-all"
             >
               <Unlock className="w-4 h-4" />
               <span>Abrir Turno de Caja</span>
@@ -245,33 +245,33 @@ export function CashRegisterView({ tenantId, branchId }: CashRegisterViewProps) 
               Auditoría de Cierre de Caja Realizado
             </h3>
             <span className="text-xs font-mono text-slate-500">
-              {new Date(closeSummary.closedAt).toLocaleTimeString()}
+              {new Date(closeSummary.closedAt).toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" })}
             </span>
           </div>
 
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-xs font-mono">
             <div className="p-3 bg-slate-900 rounded-xl">
               <span className="text-slate-500 block">Fondo Inicial</span>
-              <span className="text-base font-bold text-white">${closeSummary.initialCash.toLocaleString()}</span>
+              <span className="text-base font-bold text-white">${closeSummary.initialCash.toLocaleString("es-AR")}</span>
             </div>
             <div className="p-3 bg-slate-900 rounded-xl">
               <span className="text-slate-500 block">Ingresos Efectivo</span>
-              <span className="text-base font-bold text-emerald-400">+${closeSummary.totalCashIncomes.toLocaleString()}</span>
+              <span className="text-base font-bold text-emerald-400">+${closeSummary.totalCashIncomes.toLocaleString("es-AR")}</span>
             </div>
             <div className="p-3 bg-slate-900 rounded-xl">
               <span className="text-slate-500 block">Egresos Menores</span>
-              <span className="text-base font-bold text-rose-400">-${closeSummary.totalCashExpenses.toLocaleString()}</span>
+              <span className="text-base font-bold text-rose-400">-${closeSummary.totalCashExpenses.toLocaleString("es-AR")}</span>
             </div>
             <div className="p-3 bg-slate-900 rounded-xl">
               <span className="text-slate-500 block">Esperado Teórico</span>
-              <span className="text-base font-bold text-white">${closeSummary.systemExpectedCash.toLocaleString()}</span>
+              <span className="text-base font-bold text-white">${closeSummary.systemExpectedCash.toLocaleString("es-AR")}</span>
             </div>
           </div>
 
           <div className="p-4 rounded-2xl bg-slate-900/80 border border-slate-800 flex items-center justify-between">
             <div>
               <span className="text-xs text-slate-400 block">Declarado por el Recepcionista (Ciego):</span>
-              <span className="text-lg font-bold text-white font-mono">${closeSummary.declaredCash.toLocaleString()}</span>
+              <span className="text-lg font-bold text-white font-mono">${closeSummary.declaredCash.toLocaleString("es-AR")}</span>
             </div>
             <div className="text-right">
               <span className="text-xs text-slate-400 block">Diferencia de Cuadre:</span>
@@ -287,8 +287,8 @@ export function CashRegisterView({ tenantId, branchId }: CashRegisterViewProps) 
                 {closeSummary.differenceCash === 0
                   ? "CUADRE PERFECTO ($0)"
                   : closeSummary.differenceCash < 0
-                  ? `FALTANTE -$${Math.abs(closeSummary.differenceCash).toLocaleString()}`
-                  : `SOBRANTE +$${closeSummary.differenceCash.toLocaleString()}`}
+                  ? `FALTANTE -$${Math.abs(closeSummary.differenceCash).toLocaleString("es-AR")}`
+                  : `SOBRANTE +$${closeSummary.differenceCash.toLocaleString("es-AR")}`}
               </span>
             </div>
           </div>
@@ -299,7 +299,7 @@ export function CashRegisterView({ tenantId, branchId }: CashRegisterViewProps) 
       {shiftData?.shift && shiftData.blind ? (
         // ARQUEO CIEGO real: el recepcionista no ve el saldo teórico hasta después de declarar
         <div className="glass-panel p-6 rounded-3xl border border-slate-800 flex items-center gap-4">
-          <Lock className="w-8 h-8 text-emerald-400 shrink-0" />
+          <Lock className="w-8 h-8 text-volt-400 shrink-0" />
           <div>
             <h3 className="text-sm font-bold text-white">Caja abierta · Arqueo ciego activo</h3>
             <p className="text-xs text-slate-400 mt-1">
@@ -313,7 +313,7 @@ export function CashRegisterView({ tenantId, branchId }: CashRegisterViewProps) 
           <div className="glass-panel p-5 rounded-2xl border border-slate-800">
             <span className="text-xs text-slate-400 font-semibold block">Fondo Inicial</span>
             <p className="text-2xl font-black text-white font-mono mt-1">
-              ${shiftData.summary?.initialCash?.toLocaleString()}
+              ${shiftData.summary?.initialCash?.toLocaleString("es-AR")}
             </p>
             <span className="text-[10px] text-slate-500">Declarado al abrir turno</span>
           </div>
@@ -324,7 +324,7 @@ export function CashRegisterView({ tenantId, branchId }: CashRegisterViewProps) 
               Ingresos en Efectivo
             </span>
             <p className="text-2xl font-black text-emerald-400 font-mono mt-1">
-              +${shiftData.summary?.totalIncomes?.toLocaleString()}
+              +${shiftData.summary?.totalIncomes?.toLocaleString("es-AR")}
             </p>
             <span className="text-[10px] text-slate-500">Cobros en mostrador</span>
           </div>
@@ -335,7 +335,7 @@ export function CashRegisterView({ tenantId, branchId }: CashRegisterViewProps) 
               Egresos / Gastos
             </span>
             <p className="text-2xl font-black text-rose-400 font-mono mt-1">
-              -${shiftData.summary?.totalExpenses?.toLocaleString()}
+              -${shiftData.summary?.totalExpenses?.toLocaleString("es-AR")}
             </p>
             <span className="text-[10px] text-slate-500">Gastos menores justificados</span>
           </div>
@@ -343,7 +343,7 @@ export function CashRegisterView({ tenantId, branchId }: CashRegisterViewProps) 
           <div className="glass-panel p-5 rounded-2xl border border-emerald-500/30 bg-emerald-500/5">
             <span className="text-xs text-emerald-400 font-bold block">Efectivo en Cajón (En Vivo)</span>
             <p className="text-2xl font-black text-white font-mono mt-1">
-              ${shiftData.summary?.currentCalculatedCash?.toLocaleString()}
+              ${shiftData.summary?.currentCalculatedCash?.toLocaleString("es-AR")}
             </p>
             <span className="text-[10px] text-emerald-400/80">Saldo calculado en tiempo real</span>
           </div>
@@ -393,7 +393,7 @@ export function CashRegisterView({ tenantId, branchId }: CashRegisterViewProps) 
                       m.type === "INCOME" ? "text-emerald-400" : "text-rose-400"
                     }`}
                   >
-                    {m.type === "INCOME" ? "+" : "-"}${m.amount.toLocaleString()}
+                    {m.type === "INCOME" ? "+" : "-"}${m.amount.toLocaleString("es-AR")}
                   </span>
                   <span className="text-[10px] text-slate-500">
                     {new Date(m.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
@@ -410,7 +410,7 @@ export function CashRegisterView({ tenantId, branchId }: CashRegisterViewProps) 
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
           <div className="bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-md p-6 relative">
             <h3 className="text-lg font-bold text-white mb-2 flex items-center gap-2">
-              <Unlock className="w-5 h-5 text-emerald-400" />
+              <Unlock className="w-5 h-5 text-volt-400" />
               Apertura de Turno de Caja
             </h3>
             <p className="text-xs text-slate-400 mb-5">
@@ -438,7 +438,7 @@ export function CashRegisterView({ tenantId, branchId }: CashRegisterViewProps) 
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-bold"
+                  className="px-5 py-2 rounded-xl bg-volt-400 hover:bg-volt-300 text-ink font-bold"
                 >
                   Abrir Caja
                 </button>

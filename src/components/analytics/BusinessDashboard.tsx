@@ -63,7 +63,7 @@ export function BusinessDashboard({ tenantId }: BusinessDashboardProps) {
               <Activity className="w-4 h-4" />
             </div>
             <h2 className="text-xl font-bold text-white tracking-tight">
-              Executive Business Intelligence & Analíticas
+              Números del gimnasio
             </h2>
           </div>
           <p className="text-xs text-zinc-400 mt-1">
@@ -87,29 +87,19 @@ export function BusinessDashboard({ tenantId }: BusinessDashboardProps) {
         <div className="glass-panel p-5 rounded-2xl border border-zinc-800 flex flex-col justify-between">
           <div className="flex items-center justify-between">
             <span className="text-xs text-zinc-400 font-semibold flex items-center gap-1.5">
-              <DollarSign className="w-4 h-4 text-emerald-400" />
-              MRR / Facturación
+              <DollarSign className="w-4 h-4 text-volt-400" />
+              Cobrado
             </span>
             <span className="inline-flex items-center text-[10px] font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
-              <ArrowUpRight className="w-3 h-3 mr-0.5" /> +12.4%
+              30 días
             </span>
           </div>
           <div className="my-3">
             <p className="text-2xl font-black text-white font-mono tracking-tight">
-              ${data?.monthlyRecurringRevenue?.toLocaleString() || "0"}
+              ${data?.monthlyRecurringRevenue?.toLocaleString("es-AR") || "0"}
             </p>
-            {/* Sparkline Graphic */}
-            <div className="flex items-end gap-1 h-6 mt-2 pt-1 border-t border-zinc-800/80">
-              <div className="w-full bg-emerald-500/20 rounded-t h-[40%]" />
-              <div className="w-full bg-emerald-500/30 rounded-t h-[60%]" />
-              <div className="w-full bg-emerald-500/40 rounded-t h-[50%]" />
-              <div className="w-full bg-emerald-500/50 rounded-t h-[75%]" />
-              <div className="w-full bg-emerald-500/70 rounded-t h-[65%]" />
-              <div className="w-full bg-emerald-500/90 rounded-t h-[90%]" />
-              <div className="w-full bg-emerald-400 rounded-t h-[100%]" />
-            </div>
           </div>
-          <span className="text-[11px] text-zinc-500">Ingresos consolidados del mes activo</span>
+          <span className="text-[11px] text-zinc-500">Cobros aprobados en los últimos 30 días</span>
         </div>
 
         {/* Card 2: Socios Activos */}
@@ -120,22 +110,13 @@ export function BusinessDashboard({ tenantId }: BusinessDashboardProps) {
               Socios Activos
             </span>
             <span className="inline-flex items-center text-[10px] font-bold text-blue-400 bg-blue-500/10 px-2 py-0.5 rounded-full border border-blue-500/20">
-              <ArrowUpRight className="w-3 h-3 mr-0.5" /> +4.1%
+              Hoy
             </span>
           </div>
           <div className="my-3">
             <p className="text-2xl font-black text-blue-400 font-mono tracking-tight">
               {data?.activeMembers || 0}
             </p>
-            {/* Sparkline Graphic */}
-            <div className="flex items-end gap-1 h-6 mt-2 pt-1 border-t border-zinc-800/80">
-              <div className="w-full bg-blue-500/20 rounded-t h-[50%]" />
-              <div className="w-full bg-blue-500/30 rounded-t h-[55%]" />
-              <div className="w-full bg-blue-500/40 rounded-t h-[70%]" />
-              <div className="w-full bg-blue-500/60 rounded-t h-[65%]" />
-              <div className="w-full bg-blue-500/80 rounded-t h-[80%]" />
-              <div className="w-full bg-blue-400 rounded-t h-[100%]" />
-            </div>
           </div>
           <span className="text-[11px] text-zinc-500">
             Total en padrón histórico: {data?.totalMembers || 0}
@@ -181,7 +162,7 @@ export function BusinessDashboard({ tenantId }: BusinessDashboardProps) {
               Horario Pico Máximo
             </span>
             <span className="inline-flex items-center text-[10px] font-bold text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded-full border border-amber-500/20">
-              Staff Alert
+              Pico
             </span>
           </div>
           <div className="my-3">
@@ -203,7 +184,7 @@ export function BusinessDashboard({ tenantId }: BusinessDashboardProps) {
           <div>
             <h3 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
               <Clock className="w-4 h-4 text-blue-400" />
-              Mapa de Calor de Afluencia Semanal (7x24 Matrix)
+              Horarios de mayor afluencia
             </h3>
             <p className="text-xs text-zinc-400 mt-0.5">
               Distribución de check-ins de 06:00 a 22:00 hs para dimensionar personal y limpieza.
@@ -228,8 +209,8 @@ export function BusinessDashboard({ tenantId }: BusinessDashboardProps) {
         <div className="overflow-x-auto pb-2">
           <div className="min-w-[700px] space-y-2 text-xs">
             {/* Cabecera de Horas (06hs a 22hs) */}
-            <div className="grid grid-cols-18 gap-1.5 text-[10px] font-mono text-zinc-500 text-center">
-              <div className="col-span-2 text-left font-bold text-zinc-400">Día</div>
+            <div className="grid grid-cols-[5.5rem_repeat(16,minmax(0,1fr))] gap-1.5 text-[10px] font-mono text-zinc-500 text-center">
+              <div className="text-left font-bold text-zinc-400">Día</div>
               {Array.from({ length: 16 }, (_, i) => i + 6).map((h) => (
                 <div key={h} className="col-span-1">
                   {h}h
@@ -239,8 +220,8 @@ export function BusinessDashboard({ tenantId }: BusinessDashboardProps) {
 
             {/* Filas por Día */}
             {data?.peakHoursHeatmap?.map((day: any, dIdx: number) => (
-              <div key={dIdx} className="grid grid-cols-18 gap-1.5 items-center">
-                <div className="col-span-2 text-xs font-semibold text-zinc-300 truncate">
+              <div key={dIdx} className="grid grid-cols-[5.5rem_repeat(16,minmax(0,1fr))] gap-1.5 items-center">
+                <div className="text-xs font-semibold text-zinc-300 truncate">
                   {day.dayName}
                 </div>
                 {Array.from({ length: 16 }, (_, i) => i + 6).map((h) => {
@@ -249,7 +230,7 @@ export function BusinessDashboard({ tenantId }: BusinessDashboardProps) {
                     <div
                       key={h}
                       title={`${day.dayName} a las ${h}:00 hs: ${count} accesos registrados`}
-                      className={`col-span-1 h-8 rounded-lg border flex items-center justify-center font-mono text-[10px] cursor-pointer transition-all hover:scale-110 ${getHeatmapColor(
+                      className={`col-span-1 h-8 rounded-lg border flex items-center justify-center font-mono text-[10px] cursor-pointer transition-all  ${getHeatmapColor(
                         count
                       )}`}
                     >

@@ -1,5 +1,6 @@
 "use client";
 
+import { salesWhatsappLink } from "@/lib/brand";
 import React, { useState } from "react";
 import {
   CreditCard,
@@ -49,14 +50,14 @@ export function SaaSSubscriptionModal({
       badge: "Económico",
     },
     pro: {
-      name: "Pro Box & Performance",
+      name: "Pro Performance",
       price: "$34.900",
       period: "ARS / mes",
       desc: "Hasta 500 socios · Split Payments · Ficha Cifrada · 1RM Epley",
       badge: "Más Elegido",
     },
     enterprise: {
-      name: "Enterprise & Cadenas VIP",
+      name: "Cadenas",
       price: "$59.900",
       period: "ARS / mes",
       desc: "Socios Ilimitados · Multi-Sede · Kiosco Táctil · Heatmap 7x24",
@@ -74,13 +75,13 @@ export function SaaSSubscriptionModal({
     cuit: "20-40000000-9",
   };
 
-  const whatsappUrl = `https://wa.me/5493425550100?text=${encodeURIComponent(
-    `Hola Nicolás! Te envío el comprobante de transferencia para activar/renovar la licencia de GymAI (Plan ${current.name} - ${current.price} ARS) para ${gymName}.`
-  )}`;
+  const whatsappUrl = salesWhatsappLink(
+    `Hola Nicolás! Te envío el comprobante de transferencia para activar/renovar la licencia de SpotterApp (Plan ${current.name} - ${current.price} ARS) para ${gymName}.`
+  );
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md animate-in fade-in">
-      <div className="relative w-full max-w-2xl bg-zinc-950 border border-zinc-800 rounded-3xl shadow-2xl shadow-blue-500/10 overflow-hidden flex flex-col max-h-[90vh]">
+      <div className="relative w-full max-w-2xl bg-zinc-950 border border-zinc-800 rounded-3xl shadow-2xl shadow-volt-400/10 overflow-hidden flex flex-col max-h-[90vh]">
         {/* Header */}
         <div className="p-6 pb-4 border-b border-zinc-800 flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -89,7 +90,7 @@ export function SaaSSubscriptionModal({
             </div>
             <div>
               <h2 className="text-lg font-bold text-white tracking-tight">
-                Pago de Suscripción & Licencia GymAI
+                Pago de licencia SpotterApp
               </h2>
               <p className="text-xs text-zinc-400">
                 Transfiere directamente para activar o renovar tu membresía SaaS
@@ -121,7 +122,7 @@ export function SaaSSubscriptionModal({
                     onClick={() => setSelectedPlan(key)}
                     className={`p-4 rounded-2xl border text-left transition-all relative flex flex-col justify-between ${
                       isSelected
-                        ? "bg-blue-600/10 border-blue-500 shadow-lg shadow-blue-500/10"
+                        ? "bg-blue-600/10 border-blue-500 shadow-lg shadow-volt-400/10"
                         : "bg-zinc-900/60 border-zinc-800 hover:border-zinc-700"
                     }`}
                   >
@@ -176,7 +177,7 @@ export function SaaSSubscriptionModal({
                 <button
                   type="button"
                   onClick={() => copyToClipboard(BANK_DATA.alias, "alias")}
-                  className="px-3 py-1.5 rounded-lg bg-zinc-900 hover:bg-blue-600 text-zinc-300 hover:text-white border border-zinc-700 transition-all flex items-center gap-1.5 font-semibold text-xs"
+                  className="px-3 py-1.5 rounded-lg bg-zinc-900 hover:bg-volt-400 text-zinc-300 hover:text-ink border border-zinc-700 transition-all flex items-center gap-1.5 font-semibold text-xs"
                 >
                   {copiedField === "alias" ? (
                     <>
@@ -205,7 +206,7 @@ export function SaaSSubscriptionModal({
                 <button
                   type="button"
                   onClick={() => copyToClipboard(BANK_DATA.cvu, "cvu")}
-                  className="px-3 py-1.5 rounded-lg bg-zinc-900 hover:bg-blue-600 text-zinc-300 hover:text-white border border-zinc-700 transition-all flex items-center gap-1.5 font-semibold text-xs"
+                  className="px-3 py-1.5 rounded-lg bg-zinc-900 hover:bg-volt-400 text-zinc-300 hover:text-ink border border-zinc-700 transition-all flex items-center gap-1.5 font-semibold text-xs"
                 >
                   {copiedField === "cvu" ? (
                     <>

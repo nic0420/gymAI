@@ -148,7 +148,7 @@ export function BulkMemberImportModal({
           {/* Zona de Arrastrar o Botón */}
           <div className="flex flex-col sm:flex-row gap-3 items-center justify-between p-4 rounded-2xl bg-slate-900/60 border border-slate-800">
             <div className="flex items-center gap-3">
-              <UploadCloud className="w-6 h-6 text-emerald-400" />
+              <UploadCloud className="w-6 h-6 text-volt-400" />
               <div>
                 <p className="text-xs font-semibold text-white">Subir archivo .CSV o .TXT</p>
                 <p className="text-[11px] text-slate-500">Separado por comas, punto y coma o tabulaciones</p>
