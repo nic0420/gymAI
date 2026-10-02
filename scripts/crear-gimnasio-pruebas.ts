@@ -1,5 +1,7 @@
 /**
- * Crea (o actualiza) el gimnasio de pruebas "gym-pruebas" con el plan más alto (Cadenas).
+ * Crea (o actualiza) un gimnasio con el plan más alto (Cadenas). Por defecto, "gym-pruebas".
+ * Para otro gimnasio: TEST_GYM_SLUG, TEST_GYM_NAME, TEST_GYM_EMAIL, TEST_GYM_PASSWORD,
+ * TEST_GYM_ADMIN_FIRST, TEST_GYM_ADMIN_LAST, TEST_GYM_ADMIN_DNI.
  *
  * Local (usa ./local.db):
  *   npx tsx scripts/crear-gimnasio-pruebas.ts
@@ -19,7 +21,10 @@ import { and, eq } from "drizzle-orm";
 const SLUG = process.env.TEST_GYM_SLUG || "gym-pruebas";
 const EMAIL = (process.env.TEST_GYM_EMAIL || "pruebas@spotter.test").toLowerCase();
 const PASSWORD = process.env.TEST_GYM_PASSWORD || "Pruebas2026";
-const DNI = "30111222";
+const DNI = process.env.TEST_GYM_ADMIN_DNI || "30111222";
+const GYM_NAME = process.env.TEST_GYM_NAME || "Gym Pruebas";
+const ADMIN_FIRST = process.env.TEST_GYM_ADMIN_FIRST || "Test";
+const ADMIN_LAST = process.env.TEST_GYM_ADMIN_LAST || "Admin";
 
 const SETTINGS = {
   plan: "ENTERPRISE_VIP",
@@ -49,7 +54,7 @@ async function main() {
     const id = generateUUIDv7();
     await db.insert(tenants).values({
       id,
-      name: "Gym Pruebas",
+      name: GYM_NAME,
       slug: SLUG,
       email: EMAIL,
       currency: "ARS",
@@ -70,16 +75,20 @@ async function main() {
 
   const tenantId = tenant!.id;
   const existingBranches = await db.query.branches.findMany({ where: eq(branches.tenantId, tenantId) });
-  for (const [name, address] of [
-    ["Sede Central", "Calle 123"],
-    ["Sede Norte", "Av. Norte 456"],
-  ]) {
+  // TEST_GYM_BRANCHES="Sede Central|Av. Siempreviva 123;Sede Norte|Av. Norte 456"
+  const branchList: string[][] = process.env.TEST_GYM_BRANCHES
+    ? process.env.TEST_GYM_BRANCHES.split(";").map((b) => b.split("|").map((x) => x.trim()))
+    : [
+        ["Sede Central", "Calle 123"],
+        ["Sede Norte", "Av. Norte 456"],
+      ];
+  for (const [name, address] of branchList) {
     if (!existingBranches.some((b) => b.name === name)) {
       await db.insert(branches).values({
         id: generateUUIDv7(),
         tenantId,
         name,
-        address,
+        address: address || "Sin dirección",
         createdAt: now,
         updatedAt: now,
       });
@@ -98,8 +107,8 @@ async function main() {
       dniBlindIndex: generateBlindIndex(DNI),
       email: EMAIL,
       passwordHash,
-      firstName: "Test",
-      lastName: "Admin",
+      firstName: ADMIN_FIRST,
+      lastName: ADMIN_LAST,
       role: "SUPERADMIN",
       status: "ACTIVE",
       createdAt: now,

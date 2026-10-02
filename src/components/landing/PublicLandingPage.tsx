@@ -739,7 +739,7 @@ export function PublicLandingPage({
           <div className="flex items-center gap-4">
             <SpotterLogo size="sm" showTag={false} />
             <span>
-              © {new Date().getFullYear()} {BRAND.name} · por {BRAND.company}
+              © {new Date().getFullYear()} {BRAND.name}
             </span>
           </div>
           <div className="flex flex-wrap items-center gap-5">
@@ -761,6 +761,7 @@ export function PublicLandingPage({
           </div>
         </div>
         {seedMsg && <p className="pb-6 text-center text-sm text-volt-300">{seedMsg}</p>}
+        <p className="pb-5 text-center text-[10px] tracking-wide text-graphite-600">Web hecha por {BRAND.company}</p>
       </footer>
 
       {isSubscriptionOpen && (
